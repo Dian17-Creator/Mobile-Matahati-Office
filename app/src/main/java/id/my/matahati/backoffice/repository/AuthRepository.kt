@@ -3,10 +3,13 @@ package id.my.matahati.backoffice.repository
 import com.google.gson.Gson
 import id.my.matahati.backoffice.data.local.SessionManager
 import id.my.matahati.backoffice.data.remote.ApiService
+import id.my.matahati.backoffice.model.DashboardResponse
 import id.my.matahati.backoffice.model.ErrorResponse
 import id.my.matahati.backoffice.model.LoginRequest
 import id.my.matahati.backoffice.model.LoginResponse
 import id.my.matahati.backoffice.model.User
+
+class UnauthorizedException(message: String) : Exception(message)
 
 class AuthRepository(
     private val apiService: ApiService,
@@ -86,6 +89,35 @@ class AuthRepository(
 
     fun setSelectedOutlet(outletId: Int, outletName: String) {
         sessionManager.setSelectedOutletId(outletId, outletName)
+    }
+
+    suspend fun getDashboard(
+        startDate: String?,
+        endDate: String?,
+        nidOutlet: Int?
+    ): Result<DashboardResponse> {
+        return try {
+            val outletParam = if (nidOutlet != null && nidOutlet > 0) nidOutlet else null
+            val response = apiService.getDashboard(startDate, endDate, outletParam)
+            if (response.isSuccessful && response.body() != null) {
+                val dashboardRes = response.body()!!
+                if (dashboardRes.success) {
+                    Result.success(dashboardRes)
+                } else {
+                    Result.failure(Exception(if (dashboardRes.message.isNotBlank()) dashboardRes.message else "Gagal memuat data dashboard"))
+                }
+            } else {
+                if (response.code() == 401 || response.code() == 403) {
+                    sessionManager.clearSession()
+                    Result.failure(UnauthorizedException("Sesi Anda telah berakhir, silakan login kembali"))
+                } else {
+                    val errorMsg = parseErrorMessage(response.errorBody()?.string())
+                    Result.failure(Exception(errorMsg))
+                }
+            }
+        } catch (e: Exception) {
+            Result.failure(Exception(e.message ?: "Terjadi kesalahan koneksi internet"))
+        }
     }
 
     private fun parseErrorMessage(errorBody: String?): String {
