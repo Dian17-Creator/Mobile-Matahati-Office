@@ -28,29 +28,28 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.material.icons.filled.Assessment
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.FilterList
-import androidx.compose.material.icons.filled.Inventory2
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material.icons.filled.Menu
-import androidx.compose.material.icons.filled.People
-import androidx.compose.material.icons.filled.PointOfSale
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material.icons.filled.Storefront
 import androidx.compose.material.icons.filled.SyncAlt
-import androidx.compose.material.icons.filled.Warehouse
 import androidx.compose.material.icons.filled.WbSunny
 import androidx.compose.material.icons.outlined.AccountBalanceWallet
 import androidx.compose.material.icons.outlined.BarChart
+import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.Inventory2
+import androidx.compose.material.icons.outlined.Logout
 import androidx.compose.material.icons.outlined.Output
+import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.PersonAdd
+import androidx.compose.material.icons.outlined.ReceiptLong
+import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.ShoppingCart
 import androidx.compose.material.icons.outlined.TrendingUp
 import androidx.compose.material3.AlertDialog
@@ -84,12 +83,16 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import id.my.matahati.backoffice.model.Outlet
 import id.my.matahati.backoffice.model.TopGroup
+import id.my.matahati.backoffice.ui.purchase.PurchaseScreen
+import id.my.matahati.backoffice.ui.purchase.PurchaseViewModel
 import id.my.matahati.backoffice.ui.theme.MatahatiMaroon
 import id.my.matahati.backoffice.ui.theme.MatahatiMaroonContainer
 import java.text.NumberFormat
@@ -157,8 +160,10 @@ fun DashboardScreen(
             exit = shrinkHorizontally() + fadeOut()
         ) {
             SidebarNavigation(
-                selectedMenu = uiState.selectedMenu,
+                uiState = uiState,
                 onMenuSelected = { viewModel.selectMenu(it) },
+                onToggleUserHeader = { viewModel.toggleUserHeaderExpand() },
+                onToggleParentMenu = { viewModel.toggleParentMenuExpand(it) },
                 onLogoutClick = { showLogoutDialog = true },
                 modifier = Modifier
                     .width(260.dp)
@@ -173,11 +178,9 @@ fun DashboardScreen(
                 .fillMaxHeight()
                 .background(MaterialTheme.colorScheme.background)
         ) {
-            // Header / TopBar Maroon
+            // Header / TopBar Maroon (Clean title only, without "Halo, User")
             DashboardTopBar(
                 selectedMenuTitle = uiState.selectedMenu.title,
-                userName = uiState.user?.name ?: "User",
-                userRole = uiState.user?.roleName ?: "Role",
                 selectedOutletName = uiState.selectedOutletName,
                 outlets = uiState.outlets,
                 isOutletLocked = uiState.isOutletLocked || uiState.outlets.size <= 1,
@@ -189,18 +192,30 @@ fun DashboardScreen(
 
             // Dynamic Page Content
             Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(24.dp)
+                modifier = Modifier.fillMaxSize()
             ) {
                 when (uiState.selectedMenu) {
-                    DashboardMenu.DASHBOARD -> DashboardMainContent(
-                        uiState = uiState,
-                        onOpenDateFilter = { showDateFilterDialog = true },
-                        onRefresh = { viewModel.refreshDashboardData() },
-                        onToggleCategoryExpand = { viewModel.toggleCategoryExpand(it) }
-                    )
-                    else -> PlaceholderContent(menuTitle = uiState.selectedMenu.title)
+                    DashboardMenu.DASHBOARD -> Box(modifier = Modifier.padding(24.dp)) {
+                        DashboardMainContent(
+                            uiState = uiState,
+                            onOpenDateFilter = { showDateFilterDialog = true },
+                            onRefresh = { viewModel.refreshDashboardData() },
+                            onToggleCategoryExpand = { viewModel.toggleCategoryExpand(it) }
+                        )
+                    }
+                    DashboardMenu.PEMBELIAN -> {
+                        val purchaseViewModel: PurchaseViewModel = viewModel(
+                            key = "PurchaseViewModel_${uiState.selectedOutletId}",
+                            factory = PurchaseViewModel.Factory(viewModel.repository)
+                        )
+                        PurchaseScreen(
+                            viewModel = purchaseViewModel,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
+                    else -> Box(modifier = Modifier.padding(24.dp)) {
+                        PlaceholderContent(menuTitle = uiState.selectedMenu.title)
+                    }
                 }
             }
         }
@@ -209,191 +224,315 @@ fun DashboardScreen(
 
 @Composable
 private fun SidebarNavigation(
-    selectedMenu: DashboardMenu,
+    uiState: DashboardUiState,
     onMenuSelected: (DashboardMenu) -> Unit,
+    onToggleUserHeader: () -> Unit,
+    onToggleParentMenu: (String) -> Unit,
     onLogoutClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val userName = uiState.user?.name ?: "Diah"
+    val userRole = uiState.user?.roleName ?: "Captain"
+    val selectedMenu = uiState.selectedMenu
+
     Surface(
         modifier = modifier,
-        color = MaterialTheme.colorScheme.surface,
+        color = Color.White,
         tonalElevation = 2.dp
     ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(vertical = 20.dp, horizontal = 12.dp),
-            verticalArrangement = Arrangement.SpaceBetween
+                .padding(vertical = 16.dp, horizontal = 12.dp)
+                .verticalScroll(rememberScrollState())
         ) {
-            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
-                // Header Sidebar Branding
-                Row(
+            // Top User Header Card with Floating Overlay Dropdown Menu
+            Box(modifier = Modifier.fillMaxWidth()) {
+                Surface(
+                    shape = RoundedCornerShape(14.dp),
+                    color = MatahatiMaroon,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 12.dp, vertical = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                        .clip(RoundedCornerShape(14.dp))
+                        .clickable { onToggleUserHeader() }
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .size(40.dp)
-                            .clip(RoundedCornerShape(10.dp))
-                            .background(MatahatiMaroon),
-                        contentAlignment = Alignment.Center
+                    Row(
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
                     ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(38.dp)
+                                    .clip(CircleShape)
+                                    .background(Color.White.copy(alpha = 0.25f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Person,
+                                    contentDescription = "User Avatar",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(22.dp)
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Column {
+                                Text(
+                                    text = userName,
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                                Text(
+                                    text = userRole,
+                                    fontSize = 12.sp,
+                                    color = Color.White.copy(alpha = 0.85f),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                        }
+
                         Icon(
-                            imageVector = Icons.Default.Storefront,
-                            contentDescription = null,
+                            imageVector = if (uiState.isUserHeaderExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                            contentDescription = "Dropdown User",
                             tint = Color.White,
-                            modifier = Modifier.size(24.dp)
-                        )
-                    }
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Column {
-                        Text(
-                            text = "Matahati Office",
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = MatahatiMaroon
-                        )
-                        Text(
-                            text = "Web Office Portal",
-                            fontSize = 12.sp,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                            modifier = Modifier.size(20.dp)
                         )
                     }
                 }
 
-                Spacer(modifier = Modifier.height(24.dp))
+                // Floating Dropdown Popup Menu (Overlay - does not shift sidebar content below)
+                DropdownMenu(
+                    expanded = uiState.isUserHeaderExpanded,
+                    onDismissRequest = onToggleUserHeader,
+                    modifier = Modifier
+                        .width(236.dp)
+                        .background(Color.White, shape = RoundedCornerShape(14.dp))
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(6.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        // Profil Option
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(8.dp))
+                                .clickable { onToggleUserHeader() }
+                                .padding(horizontal = 12.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.Person,
+                                contentDescription = "Profil",
+                                tint = Color(0xFF64748B),
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Text(
+                                text = "Profil",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = Color(0xFF334155)
+                            )
+                        }
 
-                // Menu Items
-                SidebarMenuItem(
-                    title = DashboardMenu.DASHBOARD.title,
-                    icon = Icons.Default.Dashboard,
-                    isSelected = selectedMenu == DashboardMenu.DASHBOARD,
-                    onClick = { onMenuSelected(DashboardMenu.DASHBOARD) }
-                )
-
-                SidebarSectionHeader(title = "Produk & Inventori")
-                SidebarMenuItem(
-                    title = DashboardMenu.PRODUK.title,
-                    icon = Icons.Default.Inventory2,
-                    isSelected = selectedMenu == DashboardMenu.PRODUK,
-                    onClick = { onMenuSelected(DashboardMenu.PRODUK) }
-                )
-                SidebarMenuItem(
-                    title = DashboardMenu.INVENTORI.title,
-                    icon = Icons.Default.Warehouse,
-                    isSelected = selectedMenu == DashboardMenu.INVENTORI,
-                    onClick = { onMenuSelected(DashboardMenu.INVENTORI) }
-                )
-
-                SidebarSectionHeader(title = "Transaksi & Pembayaran")
-                SidebarMenuItem(
-                    title = DashboardMenu.PENJUALAN.title,
-                    icon = Icons.Default.PointOfSale,
-                    isSelected = selectedMenu == DashboardMenu.PENJUALAN,
-                    onClick = { onMenuSelected(DashboardMenu.PENJUALAN) }
-                )
-                SidebarMenuItem(
-                    title = DashboardMenu.PEMBELIAN.title,
-                    icon = Icons.Default.ShoppingCart,
-                    isSelected = selectedMenu == DashboardMenu.PEMBELIAN,
-                    onClick = { onMenuSelected(DashboardMenu.PEMBELIAN) }
-                )
-
-                SidebarSectionHeader(title = "Analisis & Pelanggan")
-                SidebarMenuItem(
-                    title = DashboardMenu.LAPORAN.title,
-                    icon = Icons.Default.Assessment,
-                    isSelected = selectedMenu == DashboardMenu.LAPORAN,
-                    onClick = { onMenuSelected(DashboardMenu.LAPORAN) }
-                )
-                SidebarMenuItem(
-                    title = DashboardMenu.PELANGGAN_SUPPLIER.title,
-                    icon = Icons.Default.People,
-                    isSelected = selectedMenu == DashboardMenu.PELANGGAN_SUPPLIER,
-                    onClick = { onMenuSelected(DashboardMenu.PELANGGAN_SUPPLIER) }
-                )
+                        // Keluar Option
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = Color(0xFFFFF1F2),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(8.dp))
+                                .clickable {
+                                    onToggleUserHeader()
+                                    onLogoutClick()
+                                }
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Outlined.Logout,
+                                    contentDescription = "Keluar",
+                                    tint = MatahatiMaroon,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Text(
+                                    text = "Keluar",
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MatahatiMaroon
+                                )
+                            }
+                        }
+                    }
+                }
             }
 
-            // Bottom Logout Button
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Dashboard Menu Item (Single Item at Top)
+            val isDashboardSelected = selectedMenu == DashboardMenu.DASHBOARD
             Surface(
+                shape = RoundedCornerShape(10.dp),
+                color = if (isDashboardSelected) Color(0xFFF0F4F8) else Color.Transparent,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(top = 8.dp),
-                shape = RoundedCornerShape(12.dp),
-                color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.2f),
-                onClick = onLogoutClick
+                    .clip(RoundedCornerShape(10.dp))
+                    .clickable { onMenuSelected(DashboardMenu.DASHBOARD) }
             ) {
                 Row(
-                    modifier = Modifier.padding(14.dp),
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Logout,
-                        contentDescription = "Logout",
-                        tint = MaterialTheme.colorScheme.error,
+                        imageVector = Icons.Outlined.Home,
+                        contentDescription = "Dashboard",
+                        tint = if (isDashboardSelected) Color(0xFF0F172A) else Color(0xFF64748B),
                         modifier = Modifier.size(20.dp)
                     )
-                    Spacer(modifier = Modifier.width(12.dp))
+                    Spacer(modifier = Modifier.width(14.dp))
                     Text(
-                        text = "Keluar (Logout)",
+                        text = "Dashboard",
                         fontSize = 14.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.error
+                        fontWeight = if (isDashboardSelected) FontWeight.Bold else FontWeight.Medium,
+                        color = if (isDashboardSelected) Color(0xFF0F172A) else Color(0xFF334155)
                     )
                 }
             }
+
+            Spacer(modifier = Modifier.height(12.dp))
+            HorizontalDivider(color = Color(0xFFF1F5F9))
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Accordion Parent Groups (3 groups)
+            SidebarAccordionGroup(
+                title = "Produk & Inventori",
+                icon = Icons.Outlined.Inventory2,
+                isExpanded = uiState.expandedParentMenus.contains("Produk & Inventori"),
+                onToggleExpand = { onToggleParentMenu("Produk & Inventori") },
+                subItems = listOf(
+                    DashboardMenu.PRODUK,
+                    DashboardMenu.INVENTORI,
+                    DashboardMenu.PRODUK_KOMBO
+                ),
+                selectedMenu = selectedMenu,
+                onMenuSelected = onMenuSelected
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            SidebarAccordionGroup(
+                title = "Transaksi & Pembayaran",
+                icon = Icons.Outlined.ReceiptLong,
+                isExpanded = uiState.expandedParentMenus.contains("Transaksi & Pembayaran"),
+                onToggleExpand = { onToggleParentMenu("Transaksi & Pembayaran") },
+                subItems = listOf(
+                    DashboardMenu.PEMBELIAN,
+                    DashboardMenu.PENJUALAN,
+                    DashboardMenu.METODE_PEMBAYARAN
+                ),
+                selectedMenu = selectedMenu,
+                onMenuSelected = onMenuSelected
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            SidebarAccordionGroup(
+                title = "Laporan & Pembukuan",
+                icon = Icons.Outlined.Schedule,
+                isExpanded = uiState.expandedParentMenus.contains("Laporan & Pembukuan"),
+                onToggleExpand = { onToggleParentMenu("Laporan & Pembukuan") },
+                subItems = listOf(
+                    DashboardMenu.LAPORAN
+                ),
+                selectedMenu = selectedMenu,
+                onMenuSelected = onMenuSelected
+            )
         }
     }
 }
 
 @Composable
-private fun SidebarSectionHeader(title: String) {
-    Text(
-        text = title,
-        fontSize = 11.sp,
-        fontWeight = FontWeight.Bold,
-        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
-        modifier = Modifier.padding(start = 16.dp, top = 16.dp, bottom = 6.dp)
-    )
-}
-
-@Composable
-private fun SidebarMenuItem(
+private fun SidebarAccordionGroup(
     title: String,
     icon: ImageVector,
-    isSelected: Boolean,
-    onClick: () -> Unit
+    isExpanded: Boolean,
+    onToggleExpand: () -> Unit,
+    subItems: List<DashboardMenu>,
+    selectedMenu: DashboardMenu,
+    onMenuSelected: (DashboardMenu) -> Unit
 ) {
-    val backgroundColor = if (isSelected) MatahatiMaroon else Color.Transparent
-    val contentColor = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f)
-
-    Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 3.dp),
-        shape = RoundedCornerShape(12.dp),
-        color = backgroundColor,
-        onClick = onClick
-    ) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        // Parent Header Row
         Row(
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(10.dp))
+                .clickable { onToggleExpand() }
+                .padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
         ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = title,
+                    tint = Color(0xFF0F172A),
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Text(
+                    text = title,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF0F172A)
+                )
+            }
+
             Icon(
-                imageVector = icon,
-                contentDescription = title,
-                tint = contentColor,
-                modifier = Modifier.size(20.dp)
+                imageVector = if (isExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                contentDescription = "Expand",
+                tint = Color(0xFF64748B),
+                modifier = Modifier.size(18.dp)
             )
-            Spacer(modifier = Modifier.width(14.dp))
-            Text(
-                text = title,
-                fontSize = 14.sp,
-                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                color = contentColor
-            )
+        }
+
+        // Subitems list when expanded
+        AnimatedVisibility(visible = isExpanded) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 44.dp, top = 4.dp, bottom = 4.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                subItems.forEach { menu ->
+                    val isSelected = selectedMenu == menu
+                    Text(
+                        text = menu.title,
+                        fontSize = 14.sp,
+                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                        color = if (isSelected) MatahatiMaroon else Color(0xFF475569),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(6.dp))
+                            .clickable { onMenuSelected(menu) }
+                            .padding(vertical = 6.dp, horizontal = 8.dp)
+                    )
+                }
+            }
         }
     }
 }
@@ -401,8 +540,6 @@ private fun SidebarMenuItem(
 @Composable
 private fun DashboardTopBar(
     selectedMenuTitle: String,
-    userName: String,
-    userRole: String,
     selectedOutletName: String,
     outlets: List<Outlet>,
     isOutletLocked: Boolean,
@@ -422,7 +559,7 @@ private fun DashboardTopBar(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Left Title & Hamburger Button
+            // Left Title & Hamburger Button (Clean title without "Halo, User")
             Row(verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = onToggleSidebar) {
                     Icon(
@@ -432,6 +569,13 @@ private fun DashboardTopBar(
                         modifier = Modifier.size(26.dp)
                     )
                 }
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = selectedMenuTitle,
+                    fontSize = 22.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
             }
 
             // Right Outlet Switcher Dropdown
