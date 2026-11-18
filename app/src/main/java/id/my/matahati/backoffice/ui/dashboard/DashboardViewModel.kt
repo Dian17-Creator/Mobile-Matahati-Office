@@ -21,10 +21,11 @@ enum class DashboardMenu(val title: String) {
     DASHBOARD("Dashboard"),
     PRODUK("Produk"),
     INVENTORI("Inventori"),
-    PENJUALAN("Penjualan"),
+    PRODUK_KOMBO("Produk Kombo"),
     PEMBELIAN("Pembelian"),
-    LAPORAN("Laporan"),
-    PELANGGAN_SUPPLIER("Pelanggan & Supplier")
+    PENJUALAN("Penjualan"),
+    METODE_PEMBAYARAN("Metode Pembayaran"),
+    LAPORAN("Laporan")
 }
 
 enum class DatePreset(val label: String) {
@@ -46,8 +47,16 @@ data class DashboardUiState(
     val isLoggingOut: Boolean = false,
     val isLoggedOut: Boolean = false,
 
-    // Real-data dashboard states
+    // Sidebar navigation states
     val isSidebarVisible: Boolean = true,
+    val isUserHeaderExpanded: Boolean = false,
+    val expandedParentMenus: Set<String> = setOf(
+        "Produk & Inventori",
+        "Transaksi & Pembayaran",
+        "Laporan & Pembukuan"
+    ),
+
+    // Real-data dashboard states
     val isLoading: Boolean = false,
     val dashboardData: DashboardData? = null,
     val errorMessage: String? = null,
@@ -58,7 +67,7 @@ data class DashboardUiState(
     val expandedCategoryNames: Set<String> = emptySet()
 )
 
-class DashboardViewModel(private val repository: AuthRepository) : ViewModel() {
+class DashboardViewModel(val repository: AuthRepository) : ViewModel() {
 
     private val _uiState = MutableStateFlow(DashboardUiState())
     val uiState: StateFlow<DashboardUiState> = _uiState.asStateFlow()
@@ -94,6 +103,22 @@ class DashboardViewModel(private val repository: AuthRepository) : ViewModel() {
 
     fun toggleSidebar() {
         _uiState.update { it.copy(isSidebarVisible = !it.isSidebarVisible) }
+    }
+
+    fun toggleUserHeaderExpand() {
+        _uiState.update { it.copy(isUserHeaderExpanded = !it.isUserHeaderExpanded) }
+    }
+
+    fun toggleParentMenuExpand(parentTitle: String) {
+        _uiState.update { state ->
+            val current = state.expandedParentMenus.toMutableSet()
+            if (current.contains(parentTitle)) {
+                current.remove(parentTitle)
+            } else {
+                current.add(parentTitle)
+            }
+            state.copy(expandedParentMenus = current)
+        }
     }
 
     fun selectMenu(menu: DashboardMenu) {

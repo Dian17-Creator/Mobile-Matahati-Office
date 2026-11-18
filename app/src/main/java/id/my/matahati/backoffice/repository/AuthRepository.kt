@@ -7,6 +7,8 @@ import id.my.matahati.backoffice.model.DashboardResponse
 import id.my.matahati.backoffice.model.ErrorResponse
 import id.my.matahati.backoffice.model.LoginRequest
 import id.my.matahati.backoffice.model.LoginResponse
+import id.my.matahati.backoffice.model.PurchaseDetailResponse
+import id.my.matahati.backoffice.model.PurchaseListResponse
 import id.my.matahati.backoffice.model.User
 
 class UnauthorizedException(message: String) : Exception(message)
@@ -105,6 +107,63 @@ class AuthRepository(
                     Result.success(dashboardRes)
                 } else {
                     Result.failure(Exception(if (dashboardRes.message.isNotBlank()) dashboardRes.message else "Gagal memuat data dashboard"))
+                }
+            } else {
+                if (response.code() == 401 || response.code() == 403) {
+                    sessionManager.clearSession()
+                    Result.failure(UnauthorizedException("Sesi Anda telah berakhir, silakan login kembali"))
+                } else {
+                    val errorMsg = parseErrorMessage(response.errorBody()?.string())
+                    Result.failure(Exception(errorMsg))
+                }
+            }
+        } catch (e: Exception) {
+            Result.failure(Exception(e.message ?: "Terjadi kesalahan koneksi internet"))
+        }
+    }
+
+    suspend fun getPurchases(
+        tab: String?,
+        startDate: String?,
+        endDate: String?,
+        nidOutlet: Int?,
+        search: String?,
+        page: Int? = 1
+    ): Result<PurchaseListResponse> {
+        return try {
+            val outletParam = if (nidOutlet != null && nidOutlet > 0) nidOutlet else null
+            val searchParam = if (search.isNullOrBlank()) null else search
+            val response = apiService.getPurchases(tab, startDate, endDate, outletParam, searchParam, page)
+            if (response.isSuccessful && response.body() != null) {
+                val res = response.body()!!
+                if (res.success) {
+                    Result.success(res)
+                } else {
+                    Result.failure(Exception(if (res.message.isNotBlank()) res.message else "Gagal memuat daftar pembelian"))
+                }
+            } else {
+                if (response.code() == 401 || response.code() == 403) {
+                    sessionManager.clearSession()
+                    Result.failure(UnauthorizedException("Sesi Anda telah berakhir, silakan login kembali"))
+                } else {
+                    val errorMsg = parseErrorMessage(response.errorBody()?.string())
+                    Result.failure(Exception(errorMsg))
+                }
+            }
+        } catch (e: Exception) {
+            Result.failure(Exception(e.message ?: "Terjadi kesalahan koneksi internet"))
+        }
+    }
+
+    suspend fun getPurchaseDetail(id: Int): Result<PurchaseDetailResponse> {
+        return try {
+            val response = apiService.getPurchaseDetail(id)
+            if (response.isSuccessful && response.body() != null) {
+                val res = response.body()!!
+                if (res.success) {
+                    Result.success(res)
+                } else {
+                    Result.failure(Exception(if (res.message.isNotBlank()) res.message else "Gagal memuat detail pembelian"))
                 }
             } else {
                 if (response.code() == 401 || response.code() == 403) {
