@@ -84,40 +84,40 @@ fun ReportScreen(
             .background(MaterialTheme.colorScheme.background)
     ) {
         // Top Sub-header Tab Bar (Laporan Penjualan)
-        Surface(
-            modifier = Modifier.fillMaxWidth(),
-            color = Color.White,
-            shadowElevation = 1.dp
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 24.dp),
-                horizontalArrangement = Arrangement.Start
-            ) {
-                Box(
-                    modifier = Modifier
-                        .padding(horizontal = 16.dp, vertical = 14.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(
-                            text = "Laporan Penjualan",
-                            fontSize = 15.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = MatahatiMaroon
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Box(
-                            modifier = Modifier
-                                .width(64.dp)
-                                .height(3.dp)
-                                .background(MatahatiMaroon, shape = RoundedCornerShape(2.dp))
-                        )
-                    }
-                }
-            }
-        }
+//        Surface(
+//            modifier = Modifier.fillMaxWidth(),
+//            color = Color.White,
+//            shadowElevation = 1.dp
+//        ) {
+//            Row(
+//                modifier = Modifier
+//                    .fillMaxWidth()
+//                    .padding(horizontal = 24.dp),
+//                horizontalArrangement = Arrangement.Start
+//            ) {
+//                Box(
+//                    modifier = Modifier
+//                        .padding(horizontal = 16.dp, vertical = 14.dp),
+//                    contentAlignment = Alignment.Center
+//                ) {
+//                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+//                        Text(
+//                            text = "Laporan Penjualan",
+//                            fontSize = 15.sp,
+//                            fontWeight = FontWeight.Bold,
+//                            color = MatahatiMaroon
+//                        )
+//                        Spacer(modifier = Modifier.height(8.dp))
+//                        Box(
+//                            modifier = Modifier
+//                                .width(64.dp)
+//                                .height(3.dp)
+//                                .background(MatahatiMaroon, shape = RoundedCornerShape(2.dp))
+//                        )
+//                    }
+//                }
+//            }
+//        }
 
         // Main 2-Column Content Area
         Row(
