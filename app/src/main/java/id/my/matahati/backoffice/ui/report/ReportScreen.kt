@@ -47,6 +47,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -125,10 +126,10 @@ fun ReportScreen(
                 .padding(24.dp),
             horizontalArrangement = Arrangement.spacedBy(20.dp)
         ) {
-            // Left Card: "Daftar Laporan" (Width 200.dp to give more space for the table)
+            // Left Card: "Daftar Laporan" (Width 215.dp to keep 1-line text when selected)
             Card(
                 modifier = Modifier
-                    .width(200.dp)
+                    .width(215.dp)
                     .fillMaxHeight(),
                 shape = RoundedCornerShape(14.dp),
                 colors = CardDefaults.cardColors(containerColor = Color.White),
@@ -345,7 +346,7 @@ private fun ReportTypeSelectorItem(
             .clickable { onClick() }
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 10.dp),
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
@@ -354,12 +355,14 @@ private fun ReportTypeSelectorItem(
                 tint = contentColor,
                 modifier = Modifier.size(18.dp)
             )
-            Spacer(modifier = Modifier.width(8.dp))
+            Spacer(modifier = Modifier.width(6.dp))
             Text(
                 text = title,
                 fontSize = 13.sp,
                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                color = contentColor
+                color = contentColor,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
         }
     }
@@ -465,11 +468,11 @@ private fun SalesDetailTable(reports: List<ReportItemDto>) {
             ) {
                 TableHeaderCell("TANGGAL", Modifier.weight(1.1f))
                 TableHeaderCell("WAKTU", Modifier.weight(1.3f))
-                TableHeaderCell("NO. PESANAN", Modifier.weight(2.4f))
-                TableHeaderCell("PAYMENT", Modifier.weight(1f))
+                TableHeaderCell("NO. PESANAN", Modifier.weight(2.0f))
+                TableHeaderCell("PAYMENT", Modifier.weight(1.0f))
                 TableHeaderCell("STATUS", Modifier.weight(0.8f))
                 TableHeaderCell("KASIR", Modifier.weight(0.9f))
-                TableHeaderCell("PELANGGAN", Modifier.weight(1f))
+                TableHeaderCell("PELANGGAN", Modifier.weight(1.6f), textAlign = TextAlign.Center)
                 TableHeaderCell("TOTAL PENJUALAN", Modifier.weight(1.3f))
             }
 
@@ -484,9 +487,9 @@ private fun SalesDetailTable(reports: List<ReportItemDto>) {
                 ) {
                     TableBodyCell(item.tanggalTransaksi, Modifier.weight(1.1f))
                     TableBodyCell(item.waktuTransaksi, Modifier.weight(1.3f))
-                    TableBodyCell(item.cnotransaction, Modifier.weight(2.4f), isBold = true, color = Color(0xFF0F172A))
+                    TableBodyCell(item.cnotransaction, Modifier.weight(2.0f), isBold = true, color = Color(0xFF0F172A))
                     
-                    Box(modifier = Modifier.weight(1f)) {
+                    Box(modifier = Modifier.weight(1.0f)) {
                         Surface(shape = RoundedCornerShape(6.dp), color = Color(0xFFEFF6FF)) {
                             Text(
                                 text = item.paymentMethod,
@@ -515,7 +518,7 @@ private fun SalesDetailTable(reports: List<ReportItemDto>) {
                     }
 
                     TableBodyCell(item.kasir, Modifier.weight(0.9f))
-                    TableBodyCell(item.pelanggan, Modifier.weight(1f))
+                    TableBodyCell(item.pelanggan, Modifier.weight(1.6f), textAlign = TextAlign.Center)
                     TableBodyCell(item.totalPenjualanFormatted, Modifier.weight(1.3f), isBold = true, color = Color(0xFF0F172A))
                 }
 
@@ -543,11 +546,11 @@ private fun SalesItemTable(reports: List<ReportItemDto>) {
                     .padding(horizontal = 12.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                TableHeaderCell("NO. PESANAN", Modifier.weight(2.4f))
+                TableHeaderCell("NO. PESANAN", Modifier.weight(2.0f))
                 TableHeaderCell("TANGGAL", Modifier.weight(1.5f))
-                TableHeaderCell("KASIR", Modifier.weight(1f))
+                TableHeaderCell("KASIR", Modifier.weight(1.0f))
                 TableHeaderCell("ITEM", Modifier.weight(2.2f))
-                TableHeaderCell("PELANGGAN", Modifier.weight(1f))
+                TableHeaderCell("PELANGGAN", Modifier.weight(1.4f), textAlign = TextAlign.Center)
                 TableHeaderCell("QTY", Modifier.weight(0.5f))
                 TableHeaderCell("DISKON", Modifier.weight(0.9f))
                 TableHeaderCell("TOTAL PENJUALAN", Modifier.weight(1.3f))
@@ -562,11 +565,11 @@ private fun SalesItemTable(reports: List<ReportItemDto>) {
                         .padding(horizontal = 12.dp, vertical = 12.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    TableBodyCell(item.cnotransaction, Modifier.weight(2.4f), isBold = true, color = Color(0xFF0F172A))
+                    TableBodyCell(item.cnotransaction, Modifier.weight(2.0f), isBold = true, color = Color(0xFF0F172A))
                     TableBodyCell(item.waktuTransaksi, Modifier.weight(1.5f))
-                    TableBodyCell(item.penjualanOleh, Modifier.weight(1f))
+                    TableBodyCell(item.penjualanOleh, Modifier.weight(1.0f))
                     TableBodyCell(item.itemName, Modifier.weight(2.2f), isBold = true, color = Color(0xFF0F172A))
-                    TableBodyCell(item.customerName, Modifier.weight(1f))
+                    TableBodyCell(item.customerName, Modifier.weight(1.4f), textAlign = TextAlign.Center)
                     TableBodyCell("${item.qty}", Modifier.weight(0.5f), isBold = true)
                     TableBodyCell(item.diskonFormatted, Modifier.weight(0.9f))
                     TableBodyCell(item.totalPenjualanFormatted, Modifier.weight(1.3f), isBold = true, color = Color(0xFF2563EB))
@@ -630,12 +633,17 @@ private fun CustomerReportTable(reports: List<ReportItemDto>) {
 }
 
 @Composable
-private fun TableHeaderCell(text: String, modifier: Modifier = Modifier) {
+private fun TableHeaderCell(
+    text: String,
+    modifier: Modifier = Modifier,
+    textAlign: TextAlign = TextAlign.Start
+) {
     Text(
         text = text,
         fontSize = 11.sp,
         fontWeight = FontWeight.Bold,
         color = Color(0xFF475569),
+        textAlign = textAlign,
         maxLines = 1,
         overflow = TextOverflow.Ellipsis,
         modifier = modifier
@@ -647,13 +655,15 @@ private fun TableBodyCell(
     text: String,
     modifier: Modifier = Modifier,
     isBold: Boolean = false,
-    color: Color = Color(0xFF334155)
+    color: Color = Color(0xFF334155),
+    textAlign: TextAlign = TextAlign.Start
 ) {
     Text(
         text = text,
         fontSize = 12.sp,
         fontWeight = if (isBold) FontWeight.Bold else FontWeight.Normal,
         color = color,
+        textAlign = textAlign,
         maxLines = 1,
         overflow = TextOverflow.Ellipsis,
         modifier = modifier
