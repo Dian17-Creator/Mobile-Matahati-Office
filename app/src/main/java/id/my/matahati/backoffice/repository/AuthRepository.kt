@@ -9,6 +9,7 @@ import id.my.matahati.backoffice.model.LoginRequest
 import id.my.matahati.backoffice.model.LoginResponse
 import id.my.matahati.backoffice.model.PurchaseDetailResponse
 import id.my.matahati.backoffice.model.PurchaseListResponse
+import id.my.matahati.backoffice.model.ReportResponse
 import id.my.matahati.backoffice.model.User
 
 class UnauthorizedException(message: String) : Exception(message)
@@ -164,6 +165,37 @@ class AuthRepository(
                     Result.success(res)
                 } else {
                     Result.failure(Exception(if (res.message.isNotBlank()) res.message else "Gagal memuat detail pembelian"))
+                }
+            } else {
+                if (response.code() == 401 || response.code() == 403) {
+                    sessionManager.clearSession()
+                    Result.failure(UnauthorizedException("Sesi Anda telah berakhir, silakan login kembali"))
+                } else {
+                    val errorMsg = parseErrorMessage(response.errorBody()?.string())
+                    Result.failure(Exception(errorMsg))
+                }
+            }
+        } catch (e: Exception) {
+            Result.failure(Exception(e.message ?: "Terjadi kesalahan koneksi internet"))
+        }
+    }
+
+    suspend fun getReports(
+        type: String?,
+        startDate: String?,
+        endDate: String?,
+        nidOutlet: Int?,
+        page: Int? = 1
+    ): Result<ReportResponse> {
+        return try {
+            val outletParam = if (nidOutlet != null && nidOutlet > 0) nidOutlet else null
+            val response = apiService.getReports(type, startDate, endDate, outletParam, page)
+            if (response.isSuccessful && response.body() != null) {
+                val res = response.body()!!
+                if (res.success) {
+                    Result.success(res)
+                } else {
+                    Result.failure(Exception(if (res.message.isNotBlank()) res.message else "Gagal memuat laporan"))
                 }
             } else {
                 if (response.code() == 401 || response.code() == 403) {

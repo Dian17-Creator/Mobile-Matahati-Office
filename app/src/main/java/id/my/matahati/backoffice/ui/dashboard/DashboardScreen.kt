@@ -1,12 +1,15 @@
 package id.my.matahati.backoffice.ui.dashboard
 
+import android.app.DatePickerDialog
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -84,6 +87,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -93,6 +97,8 @@ import id.my.matahati.backoffice.model.Outlet
 import id.my.matahati.backoffice.model.TopGroup
 import id.my.matahati.backoffice.ui.purchase.PurchaseScreen
 import id.my.matahati.backoffice.ui.purchase.PurchaseViewModel
+import id.my.matahati.backoffice.ui.report.ReportScreen
+import id.my.matahati.backoffice.ui.report.ReportViewModel
 import id.my.matahati.backoffice.ui.theme.MatahatiMaroon
 import id.my.matahati.backoffice.ui.theme.MatahatiMaroonContainer
 import java.text.NumberFormat
@@ -213,6 +219,16 @@ fun DashboardScreen(
                             modifier = Modifier.fillMaxSize()
                         )
                     }
+                    DashboardMenu.LAPORAN -> {
+                        val reportViewModel: ReportViewModel = viewModel(
+                            key = "ReportViewModel_${uiState.selectedOutletId}",
+                            factory = ReportViewModel.Factory(viewModel.repository)
+                        )
+                        ReportScreen(
+                            viewModel = reportViewModel,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
                     else -> Box(modifier = Modifier.padding(24.dp)) {
                         PlaceholderContent(menuTitle = uiState.selectedMenu.title)
                     }
@@ -308,13 +324,17 @@ private fun SidebarNavigation(
                     }
                 }
 
-                // Floating Dropdown Popup Menu (Overlay - does not shift sidebar content below)
+                // Floating Dropdown Popup Menu (Overlay with 8.dp top gap & 14.dp rounded corners)
                 DropdownMenu(
                     expanded = uiState.isUserHeaderExpanded,
                     onDismissRequest = onToggleUserHeader,
+                    offset = DpOffset(0.dp, 8.dp),
+                    shape = RoundedCornerShape(14.dp),
+                    shadowElevation = 6.dp,
                     modifier = Modifier
                         .width(236.dp)
                         .background(Color.White, shape = RoundedCornerShape(14.dp))
+                        .border(1.dp, Color(0xFFE2E8F0), RoundedCornerShape(14.dp))
                 ) {
                     Column(
                         modifier = Modifier
@@ -345,6 +365,11 @@ private fun SidebarNavigation(
                                 color = Color(0xFF334155)
                             )
                         }
+
+                        HorizontalDivider(
+                            color = Color(0xFFF1F5F9),
+                            modifier = Modifier.padding(horizontal = 4.dp)
+                        )
 
                         // Keluar Option
                         Surface(
@@ -1086,19 +1111,49 @@ private fun TopGroupCard(
 }
 
 @Composable
-private fun DatePresetFilterDialog(
+fun DatePresetFilterDialog(
     currentPreset: DatePreset,
     currentStart: String,
     currentEnd: String,
     onDismiss: () -> Unit,
     onPresetSelected: (DatePreset, String?, String?) -> Unit
 ) {
+    val context = LocalContext.current
     var selectedPreset by remember { mutableStateOf(currentPreset) }
     var apiStart by remember { mutableStateOf(currentStart) }
     var apiEnd by remember { mutableStateOf(currentEnd) }
 
     var displayStart by remember { mutableStateOf(formatToDisplayDate(currentStart)) }
     var displayEnd by remember { mutableStateOf(formatToDisplayDate(currentEnd)) }
+
+    fun openDatePicker(
+        initialApiDate: String,
+        onDatePicked: (String, String) -> Unit
+    ) {
+        val cal = Calendar.getInstance()
+        if (initialApiDate.isNotBlank()) {
+            try {
+                val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+                val d = sdf.parse(initialApiDate)
+                if (d != null) cal.time = d
+            } catch (_: Exception) { }
+        }
+
+        val year = cal.get(Calendar.YEAR)
+        val month = cal.get(Calendar.MONTH)
+        val day = cal.get(Calendar.DAY_OF_MONTH)
+
+        DatePickerDialog(context, { _, y, m, d ->
+            val selectedCal = Calendar.getInstance().apply {
+                set(Calendar.YEAR, y)
+                set(Calendar.MONTH, m)
+                set(Calendar.DAY_OF_MONTH, d)
+            }
+            val apiFmt = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+            val dispFmt = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+            onDatePicked(apiFmt.format(selectedCal.time), dispFmt.format(selectedCal.time))
+        }, year, month, day).show()
+    }
 
     Dialog(onDismissRequest = onDismiss) {
         Surface(
@@ -1218,12 +1273,22 @@ private fun DatePresetFilterDialog(
                             singleLine = true,
                             shape = RoundedCornerShape(10.dp),
                             trailingIcon = {
-                                Icon(
-                                    imageVector = Icons.Default.CalendarToday,
-                                    contentDescription = "Calendar",
-                                    tint = Color(0xFF64748B),
-                                    modifier = Modifier.size(18.dp)
-                                )
+                                IconButton(
+                                    onClick = {
+                                        openDatePicker(apiStart) { newApi, newDisp ->
+                                            selectedPreset = DatePreset.CUSTOM
+                                            apiStart = newApi
+                                            displayStart = newDisp
+                                        }
+                                    }
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.CalendarToday,
+                                        contentDescription = "Pilih Tanggal Mulai",
+                                        tint = MatahatiMaroon,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
                             },
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedBorderColor = MatahatiMaroon,
@@ -1233,19 +1298,28 @@ private fun DatePresetFilterDialog(
                         )
                     }
 
-                    // Swap / Arrow Icon
+                    // Swap / Arrow Sync Button
                     Box(
                         modifier = Modifier
-                            .padding(horizontal = 8.dp)
-                            .padding(top = 22.dp),
+                            .padding(horizontal = 4.dp)
+                            .padding(top = 20.dp),
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.SyncAlt,
-                            contentDescription = "Exchange",
-                            tint = Color(0xFF94A3B8),
-                            modifier = Modifier.size(20.dp)
-                        )
+                        IconButton(
+                            onClick = {
+                                selectedPreset = DatePreset.CUSTOM
+                                apiEnd = apiStart
+                                displayEnd = displayStart
+                            },
+                            modifier = Modifier.size(36.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.SyncAlt,
+                                contentDescription = "Samakan Tanggal Selesai dengan Tanggal Mulai",
+                                tint = MatahatiMaroon,
+                                modifier = Modifier.size(22.dp)
+                            )
+                        }
                     }
 
                     // "Sampai" Field
@@ -1267,12 +1341,22 @@ private fun DatePresetFilterDialog(
                             singleLine = true,
                             shape = RoundedCornerShape(10.dp),
                             trailingIcon = {
-                                Icon(
-                                    imageVector = Icons.Default.CalendarToday,
-                                    contentDescription = "Calendar",
-                                    tint = Color(0xFF64748B),
-                                    modifier = Modifier.size(18.dp)
-                                )
+                                IconButton(
+                                    onClick = {
+                                        openDatePicker(apiEnd) { newApi, newDisp ->
+                                            selectedPreset = DatePreset.CUSTOM
+                                            apiEnd = newApi
+                                            displayEnd = newDisp
+                                        }
+                                    }
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.CalendarToday,
+                                        contentDescription = "Pilih Tanggal Selesai",
+                                        tint = MatahatiMaroon,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
                             },
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedBorderColor = MatahatiMaroon,

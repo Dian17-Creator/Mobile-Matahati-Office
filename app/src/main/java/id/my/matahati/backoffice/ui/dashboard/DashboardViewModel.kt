@@ -50,11 +50,7 @@ data class DashboardUiState(
     // Sidebar navigation states
     val isSidebarVisible: Boolean = true,
     val isUserHeaderExpanded: Boolean = false,
-    val expandedParentMenus: Set<String> = setOf(
-        "Produk & Inventori",
-        "Transaksi & Pembayaran",
-        "Laporan & Pembukuan"
-    ),
+    val expandedParentMenus: Set<String> = emptySet(),
 
     // Real-data dashboard states
     val isLoading: Boolean = false,

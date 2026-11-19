@@ -7,6 +7,7 @@ import id.my.matahati.backoffice.model.LoginResponse
 import id.my.matahati.backoffice.model.MeResponse
 import id.my.matahati.backoffice.model.PurchaseDetailResponse
 import id.my.matahati.backoffice.model.PurchaseListResponse
+import id.my.matahati.backoffice.model.ReportResponse
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.GET
@@ -48,4 +49,13 @@ interface ApiService {
     suspend fun getPurchaseDetail(
         @Path("id") id: Int
     ): Response<PurchaseDetailResponse>
+
+    @GET("api/office/reports")
+    suspend fun getReports(
+        @Query("type") type: String? = "sales_detail",
+        @Query("start_date") startDate: String? = null,
+        @Query("end_date") endDate: String? = null,
+        @Query("nid_outlet") nidOutlet: Int? = null,
+        @Query("page") page: Int? = 1
+    ): Response<ReportResponse>
 }
