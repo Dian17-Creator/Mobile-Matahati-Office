@@ -2,6 +2,7 @@ package id.my.matahati.backoffice.data.remote
 
 import id.my.matahati.backoffice.model.DashboardResponse
 import id.my.matahati.backoffice.model.ErrorResponse
+import id.my.matahati.backoffice.model.InventoryResponse
 import id.my.matahati.backoffice.model.LoginRequest
 import id.my.matahati.backoffice.model.LoginResponse
 import id.my.matahati.backoffice.model.MeResponse
@@ -58,4 +59,14 @@ interface ApiService {
         @Query("nid_outlet") nidOutlet: Int? = null,
         @Query("page") page: Int? = 1
     ): Response<ReportResponse>
+
+    @GET("api/office/inventory")
+    suspend fun getInventory(
+        @Query("tab") tab: String? = "stok_masuk",
+        @Query("start_date") startDate: String? = null,
+        @Query("end_date") endDate: String? = null,
+        @Query("nid_outlet") nidOutlet: Int? = null,
+        @Query("page") page: Int? = 1,
+        @Query("per_page") perPage: Int? = 50
+    ): Response<InventoryResponse>
 }

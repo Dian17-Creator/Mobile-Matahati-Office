@@ -95,6 +95,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import id.my.matahati.backoffice.model.Outlet
 import id.my.matahati.backoffice.model.TopGroup
+import id.my.matahati.backoffice.ui.inventory.InventoryScreen
+import id.my.matahati.backoffice.ui.inventory.InventoryViewModel
 import id.my.matahati.backoffice.ui.purchase.PurchaseScreen
 import id.my.matahati.backoffice.ui.purchase.PurchaseViewModel
 import id.my.matahati.backoffice.ui.report.ReportScreen
@@ -226,6 +228,16 @@ fun DashboardScreen(
                         )
                         ReportScreen(
                             viewModel = reportViewModel,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
+                    DashboardMenu.INVENTORI -> {
+                        val inventoryViewModel: InventoryViewModel = viewModel(
+                            key = "InventoryViewModel_${uiState.selectedOutletId}",
+                            factory = InventoryViewModel.Factory(viewModel.repository)
+                        )
+                        InventoryScreen(
+                            viewModel = inventoryViewModel,
                             modifier = Modifier.fillMaxSize()
                         )
                     }

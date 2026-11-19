@@ -211,6 +211,38 @@ class AuthRepository(
         }
     }
 
+    suspend fun getInventory(
+        tab: String?,
+        startDate: String?,
+        endDate: String?,
+        nidOutlet: Int?,
+        page: Int? = 1,
+        perPage: Int? = 50
+    ): Result<id.my.matahati.backoffice.model.InventoryResponse> {
+        return try {
+            val outletParam = if (nidOutlet != null && nidOutlet > 0) nidOutlet else null
+            val response = apiService.getInventory(tab, startDate, endDate, outletParam, page, perPage)
+            if (response.isSuccessful && response.body() != null) {
+                val res = response.body()!!
+                if (res.success) {
+                    Result.success(res)
+                } else {
+                    Result.failure(Exception(if (!res.message.isNullOrBlank()) res.message else "Gagal memuat data inventori"))
+                }
+            } else {
+                if (response.code() == 401 || response.code() == 403) {
+                    sessionManager.clearSession()
+                    Result.failure(UnauthorizedException("Sesi Anda telah berakhir, silakan login kembali"))
+                } else {
+                    val errorMsg = parseErrorMessage(response.errorBody()?.string())
+                    Result.failure(Exception(errorMsg))
+                }
+            }
+        } catch (e: Exception) {
+            Result.failure(Exception(e.message ?: "Terjadi kesalahan koneksi internet"))
+        }
+    }
+
     private fun parseErrorMessage(errorBody: String?): String {
         if (errorBody.isNullOrEmpty()) return "Terjadi kesalahan pada server"
         return try {
