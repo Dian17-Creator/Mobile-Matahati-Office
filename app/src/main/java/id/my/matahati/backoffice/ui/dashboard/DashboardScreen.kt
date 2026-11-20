@@ -461,9 +461,9 @@ private fun SidebarNavigation(
                 isExpanded = uiState.expandedParentMenus.contains("Produk & Inventori"),
                 onToggleExpand = { onToggleParentMenu("Produk & Inventori") },
                 subItems = listOf(
-                    DashboardMenu.PRODUK,
+//                    DashboardMenu.PRODUK,
                     DashboardMenu.INVENTORI,
-                    DashboardMenu.PRODUK_KOMBO
+//                    DashboardMenu.PRODUK_KOMBO
                 ),
                 selectedMenu = selectedMenu,
                 onMenuSelected = onMenuSelected
@@ -478,8 +478,8 @@ private fun SidebarNavigation(
                 onToggleExpand = { onToggleParentMenu("Transaksi & Pembayaran") },
                 subItems = listOf(
                     DashboardMenu.PEMBELIAN,
-                    DashboardMenu.PENJUALAN,
-                    DashboardMenu.METODE_PEMBAYARAN
+//                    DashboardMenu.PENJUALAN,
+//                    DashboardMenu.METODE_PEMBAYARAN
                 ),
                 selectedMenu = selectedMenu,
                 onMenuSelected = onMenuSelected

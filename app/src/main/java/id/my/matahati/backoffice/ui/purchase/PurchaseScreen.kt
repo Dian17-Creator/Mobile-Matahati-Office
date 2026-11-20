@@ -7,6 +7,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -19,6 +21,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -55,17 +58,22 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import id.my.matahati.backoffice.model.PurchaseDetailData
 import id.my.matahati.backoffice.model.PurchaseItemDto
+import id.my.matahati.backoffice.ui.dashboard.DatePresetFilterDialog
 import id.my.matahati.backoffice.ui.theme.MatahatiMaroon
 
 @Composable
@@ -74,6 +82,20 @@ fun PurchaseScreen(
     modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    var showDateFilterDialog by remember { mutableStateOf(false) }
+
+    if (showDateFilterDialog) {
+        DatePresetFilterDialog(
+            currentPreset = uiState.selectedPreset,
+            currentStart = uiState.startDate,
+            currentEnd = uiState.endDate,
+            onDismiss = { showDateFilterDialog = false },
+            onPresetSelected = { preset, customStart, customEnd ->
+                showDateFilterDialog = false
+                viewModel.selectDatePreset(preset, customStart, customEnd)
+            }
+        )
+    }
 
     Column(
         modifier = modifier
@@ -145,6 +167,7 @@ fun PurchaseScreen(
                     uiState = uiState,
                     onSearchQueryChange = { viewModel.onSearchQueryChange(it) },
                     onOpenDetail = { viewModel.openDetail(it) },
+                    onOpenDateFilter = { showDateFilterDialog = true },
                     onRefresh = { viewModel.fetchPurchases() }
                 )
             }
@@ -157,6 +180,7 @@ private fun PurchaseListContent(
     uiState: PurchaseUiState,
     onSearchQueryChange: (String) -> Unit,
     onOpenDetail: (Int) -> Unit,
+    onOpenDateFilter: () -> Unit,
     onRefresh: () -> Unit
 ) {
     Column(
@@ -177,36 +201,36 @@ private fun PurchaseListContent(
                 color = Color(0xFF0F172A)
             )
 
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                OutlinedButton(
-                    onClick = { /* Import PDF action */ },
-                    shape = RoundedCornerShape(8.dp),
-                    border = BorderStroke(1.dp, MatahatiMaroon),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = MatahatiMaroon)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.PictureAsPdf,
-                        contentDescription = "Import PDF",
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(text = "Import PDF", fontWeight = FontWeight.SemiBold)
-                }
-
-                Button(
-                    onClick = { /* Tambah Pembelian */ },
-                    shape = RoundedCornerShape(8.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF16A34A))
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Add,
-                        contentDescription = "Tambah Pembelian",
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(text = "Tambah Pembelian", fontWeight = FontWeight.Bold, color = Color.White)
-                }
-            }
+//            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+//                OutlinedButton(
+//                    onClick = { /* Import PDF action */ },
+//                    shape = RoundedCornerShape(8.dp),
+//                    border = BorderStroke(1.dp, MatahatiMaroon),
+//                    colors = ButtonDefaults.outlinedButtonColors(contentColor = MatahatiMaroon)
+//                ) {
+//                    Icon(
+//                        imageVector = Icons.Default.PictureAsPdf,
+//                        contentDescription = "Import PDF",
+//                        modifier = Modifier.size(18.dp)
+//                    )
+//                    Spacer(modifier = Modifier.width(8.dp))
+//                    Text(text = "Import PDF", fontWeight = FontWeight.SemiBold)
+//                }
+//
+//                Button(
+//                    onClick = { /* Tambah Pembelian */ },
+//                    shape = RoundedCornerShape(8.dp),
+//                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF16A34A))
+//                ) {
+//                    Icon(
+//                        imageVector = Icons.Default.Add,
+//                        contentDescription = "Tambah Pembelian",
+//                        modifier = Modifier.size(18.dp)
+//                    )
+//                    Spacer(modifier = Modifier.width(6.dp))
+//                    Text(text = "Tambah Pembelian", fontWeight = FontWeight.Bold, color = Color.White)
+//                }
+//            }
         }
 
         Spacer(modifier = Modifier.height(20.dp))
@@ -239,7 +263,9 @@ private fun PurchaseListContent(
                         shape = CircleShape,
                         color = Color.White,
                         border = BorderStroke(1.dp, Color(0xFFCBD5E1)),
-                        modifier = Modifier.clip(CircleShape).clickable { }
+                        modifier = Modifier
+                            .clip(CircleShape)
+                            .clickable { onOpenDateFilter() }
                     ) {
                         Row(
                             modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
@@ -247,42 +273,62 @@ private fun PurchaseListContent(
                         ) {
                             Icon(
                                 imageVector = Icons.Default.CalendarToday,
-                                contentDescription = "Semua Tanggal",
-                                tint = Color(0xFF0284C7),
+                                contentDescription = "Filter Tanggal",
+                                tint = MatahatiMaroon,
                                 modifier = Modifier.size(14.dp)
                             )
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(
-                                text = "Semua Tanggal",
+                                text = uiState.startDate.ifEmpty { "Semua Tanggal" },
                                 fontSize = 13.sp,
-                                color = Color(0xFF0284C7),
+                                color = MatahatiMaroon,
                                 fontWeight = FontWeight.Medium
                             )
                         }
                     }
                 }
 
-                // Search Box
-                OutlinedTextField(
-                    value = uiState.searchQuery,
-                    onValueChange = onSearchQueryChange,
-                    placeholder = { Text("Cari No. PO, Supplier, No. SJ...", fontSize = 13.sp, color = Color(0xFF94A3B8)) },
-                    singleLine = true,
+                // Search Box (Surface + BasicTextField for 100% vertical center alignment)
+                Surface(
+                    modifier = Modifier.width(360.dp),
                     shape = RoundedCornerShape(8.dp),
-                    leadingIcon = {
+                    color = Color.White,
+                    border = BorderStroke(1.dp, Color(0xFFCBD5E1))
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 12.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
                         Icon(
                             imageVector = Icons.Default.Search,
                             contentDescription = "Search",
                             tint = Color(0xFF94A3B8),
-                            modifier = Modifier.size(20.dp)
+                            modifier = Modifier.size(18.dp)
                         )
-                    },
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = MatahatiMaroon,
-                        unfocusedBorderColor = Color(0xFFCBD5E1)
-                    ),
-                    modifier = Modifier.width(360.dp).height(48.dp)
-                )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Box(modifier = Modifier.weight(1f)) {
+                            if (uiState.searchQuery.isEmpty()) {
+                                Text(
+                                    text = "Cari No. PO, Supplier, No. SJ...",
+                                    fontSize = 13.sp,
+                                    color = Color(0xFF94A3B8)
+                                )
+                            }
+                            BasicTextField(
+                                value = uiState.searchQuery,
+                                onValueChange = onSearchQueryChange,
+                                singleLine = true,
+                                textStyle = TextStyle(
+                                    fontSize = 13.sp,
+                                    color = Color(0xFF0F172A)
+                                ),
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+                    }
+                }
             }
         }
 
@@ -728,17 +774,25 @@ private fun PurchaseDetailContent(
 
             // 3 Info Cards Grid Row (Supplier, Info Penerimaan, Catatan & Jatuh Tempo)
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(IntrinsicSize.Max),
                 horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 // Card 1: Supplier
                 Card(
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight(),
                     shape = RoundedCornerShape(12.dp),
                     colors = CardDefaults.cardColors(containerColor = Color.White),
                     border = BorderStroke(1.dp, Color(0xFFE2E8F0))
                 ) {
-                    Column(modifier = Modifier.padding(20.dp)) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(20.dp)
+                    ) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween,
@@ -766,12 +820,18 @@ private fun PurchaseDetailContent(
 
                 // Card 2: Info Penerimaan
                 Card(
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight(),
                     shape = RoundedCornerShape(12.dp),
                     colors = CardDefaults.cardColors(containerColor = Color.White),
                     border = BorderStroke(1.dp, Color(0xFFE2E8F0))
                 ) {
-                    Column(modifier = Modifier.padding(20.dp)) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(20.dp)
+                    ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(
                                 imageVector = Icons.Outlined.LocalShipping,
@@ -817,12 +877,18 @@ private fun PurchaseDetailContent(
 
                 // Card 3: Catatan & Jatuh Tempo
                 Card(
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight(),
                     shape = RoundedCornerShape(12.dp),
                     colors = CardDefaults.cardColors(containerColor = Color.White),
                     border = BorderStroke(1.dp, Color(0xFFE2E8F0))
                 ) {
-                    Column(modifier = Modifier.padding(20.dp)) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(20.dp)
+                    ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(
                                 imageVector = Icons.Default.Description,
