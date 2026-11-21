@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -1183,6 +1184,7 @@ fun DatePresetFilterDialog(
         Surface(
             modifier = Modifier
                 .width(420.dp)
+                .heightIn(max = 560.dp)
                 .wrapContentHeight(),
             shape = RoundedCornerShape(18.dp),
             color = Color.White,
@@ -1191,6 +1193,7 @@ fun DatePresetFilterDialog(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
                     .padding(24.dp)
             ) {
                 // Dialog Header: Title & Close Button

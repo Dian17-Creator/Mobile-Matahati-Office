@@ -1,5 +1,6 @@
 package id.my.matahati.backoffice.repository
 
+import android.util.Log
 import com.google.gson.Gson
 import id.my.matahati.backoffice.data.local.SessionManager
 import id.my.matahati.backoffice.data.remote.ApiService
@@ -14,6 +15,7 @@ import id.my.matahati.backoffice.model.PurchaseDetailResponse
 import id.my.matahati.backoffice.model.PurchaseListResponse
 import id.my.matahati.backoffice.model.ReportResponse
 import id.my.matahati.backoffice.model.User
+import okhttp3.ResponseBody
 
 class UnauthorizedException(message: String) : Exception(message)
 
@@ -212,6 +214,29 @@ class AuthRepository(
                 }
             }
         } catch (e: Exception) {
+            Result.failure(Exception(e.message ?: "Terjadi kesalahan koneksi internet"))
+        }
+    }
+
+    suspend fun downloadReportExcel(
+        type: String?,
+        startDate: String?,
+        endDate: String?,
+        nidOutlet: Int?
+    ): Result<ResponseBody> {
+        return try {
+            val outletParam = if (nidOutlet != null && nidOutlet > 0) nidOutlet else null
+            val response = apiService.downloadReportExcel(type, startDate, endDate, outletParam)
+            if (response.isSuccessful && response.body() != null) {
+                Result.success(response.body()!!)
+            } else {
+                val rawError = response.errorBody()?.string()
+                Log.e("ReportExport", "API Download Error HTTP ${response.code()}: $rawError")
+                val errorMsg = parseErrorMessage(rawError)
+                Result.failure(Exception("HTTP ${response.code()}: $errorMsg"))
+            }
+        } catch (e: Exception) {
+            Log.e("ReportExport", "API Download Exception", e)
             Result.failure(Exception(e.message ?: "Terjadi kesalahan koneksi internet"))
         }
     }
