@@ -1,10 +1,16 @@
 package id.my.matahati.backoffice.ui.report
 
-import android.app.DownloadManager
+import android.content.ContentValues
 import android.content.Context
+import android.content.Intent
 import android.net.Uri
+import android.os.Build
 import android.os.Environment
+import android.provider.MediaStore
+import android.util.Log
 import android.widget.Toast
+import okhttp3.ResponseBody
+import java.io.File
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -113,39 +119,70 @@ class ReportViewModel(private val repository: AuthRepository) : ViewModel() {
         val endDate = state.endDate.ifEmpty { null }
         val nidOutlet = if (state.selectedOutletId > 0) state.selectedOutletId else null
 
-        val token = repository.getToken()
-
-        var url = "https://pos.matahaticafe.com/api/office/reports/export?type=$type"
-        if (!startDate.isNullOrEmpty()) url += "&start_date=$startDate"
-        if (!endDate.isNullOrEmpty()) url += "&end_date=$endDate"
-        if (nidOutlet != null) url += "&nid_outlet=$nidOutlet"
-        if (!token.isNullOrEmpty()) url += "&token=$token"
-
         val fileName = when (state.selectedType) {
             ReportType.RINCIAN_PENJUALAN -> "Rincian_Penjualan_${state.startDate}_sd_${state.endDate}.xlsx"
             ReportType.ITEM_PENJUALAN -> "Item_Penjualan_${state.startDate}_sd_${state.endDate}.xlsx"
             ReportType.LAPORAN_PELANGGAN -> "Laporan_Pelanggan_${state.startDate}_sd_${state.endDate}.xlsx"
         }
 
-        try {
-            val request = DownloadManager.Request(Uri.parse(url))
-                .setTitle("Mengunduh $fileName")
-                .setDescription("File Excel Laporan $fileName")
-                .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
-                .setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, fileName)
-                .setAllowedOverMetered(true)
-                .setAllowedOverRoaming(true)
+        Toast.makeText(context, "Mengunduh $fileName...", Toast.LENGTH_SHORT).show()
 
-            if (!token.isNullOrEmpty()) {
-                request.addRequestHeader("Authorization", "Bearer $token")
+        viewModelScope.launch {
+            val result = repository.downloadReportExcel(type, startDate, endDate, nidOutlet)
+            result.onSuccess { responseBody ->
+                val saved = saveResponseBodyToDownloads(context, responseBody, fileName)
+                if (saved) {
+                    Log.d("ReportExport", "File $fileName berhasil diunduh dan disimpan ke Downloads")
+                    Toast.makeText(context, "File $fileName berhasil disimpan di folder Downloads!", Toast.LENGTH_LONG).show()
+                } else {
+                    Log.e("ReportExport", "Gagal menyimpan file $fileName ke folder Downloads")
+                    Toast.makeText(context, "Gagal menyimpan $fileName ke folder Downloads.", Toast.LENGTH_LONG).show()
+                }
+            }.onFailure { exception ->
+                Log.e("ReportExport", "Gagal mengunduh file Excel: ${exception.message}", exception)
+                Toast.makeText(context, "Gagal mengunduh file Excel: ${exception.message}", Toast.LENGTH_LONG).show()
             }
+        }
+    }
 
-            val manager = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
-            manager.enqueue(request)
+    private fun saveResponseBodyToDownloads(context: Context, body: ResponseBody, fileName: String): Boolean {
+        return try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                val values = ContentValues().apply {
+                    put(MediaStore.Downloads.DISPLAY_NAME, fileName)
+                    put(MediaStore.Downloads.MIME_TYPE, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+                    put(MediaStore.Downloads.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
+                }
 
-            Toast.makeText(context, "Mengunduh file Excel ke folder Download...", Toast.LENGTH_LONG).show()
+                val resolver = context.contentResolver
+                val uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
+                if (uri == null) {
+                    Log.e("ReportExport", "MediaStore resolver.insert mengembalikan null URI")
+                    return false
+                }
+
+                resolver.openOutputStream(uri)?.use { outputStream ->
+                    body.byteStream().use { inputStream ->
+                        inputStream.copyTo(outputStream)
+                    }
+                }
+                true
+            } else {
+                @Suppress("DEPRECATION")
+                val targetFile = File(
+                    Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
+                    fileName
+                )
+                targetFile.outputStream().use { outputStream ->
+                    body.byteStream().use { inputStream ->
+                        inputStream.copyTo(outputStream)
+                    }
+                }
+                true
+            }
         } catch (e: Exception) {
-            Toast.makeText(context, "Gagal mengunduh file Excel: ${e.message}", Toast.LENGTH_LONG).show()
+            Log.e("ReportExport", "Exception saat menyimpan file $fileName", e)
+            false
         }
     }
 

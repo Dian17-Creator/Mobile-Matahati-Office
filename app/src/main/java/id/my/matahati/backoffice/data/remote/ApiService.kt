@@ -12,12 +12,14 @@ import id.my.matahati.backoffice.model.ProductListResponse
 import id.my.matahati.backoffice.model.PurchaseDetailResponse
 import id.my.matahati.backoffice.model.PurchaseListResponse
 import id.my.matahati.backoffice.model.ReportResponse
+import okhttp3.ResponseBody
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.POST
 import retrofit2.http.Path
 import retrofit2.http.Query
+import retrofit2.http.Streaming
 
 interface ApiService {
 
@@ -62,6 +64,15 @@ interface ApiService {
         @Query("nid_outlet") nidOutlet: Int? = null,
         @Query("page") page: Int? = 1
     ): Response<ReportResponse>
+
+    @GET("api/office/reports/export")
+    @Streaming
+    suspend fun downloadReportExcel(
+        @Query("type") type: String? = "sales_detail",
+        @Query("start_date") startDate: String? = null,
+        @Query("end_date") endDate: String? = null,
+        @Query("nid_outlet") nidOutlet: Int? = null
+    ): Response<ResponseBody>
 
     @GET("api/office/inventory")
     suspend fun getInventory(
