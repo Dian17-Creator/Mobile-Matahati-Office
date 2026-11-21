@@ -273,6 +273,53 @@ class AuthRepository(
         }
     }
 
+    suspend fun getInventoryDetail(
+        type: String?,
+        no: String
+    ): Result<id.my.matahati.backoffice.model.InventoryDetailResponse> {
+        return try {
+            val response = apiService.getInventoryDetail(type, no)
+            if (response.isSuccessful && response.body() != null) {
+                val res = response.body()!!
+                if (res.success) {
+                    Result.success(res)
+                } else {
+                    Result.failure(Exception(if (!res.message.isNullOrBlank()) res.message else "Gagal memuat detail inventori"))
+                }
+            } else {
+                if (response.code() == 401 || response.code() == 403) {
+                    sessionManager.clearSession()
+                    Result.failure(UnauthorizedException("Sesi Anda telah berakhir, silakan login kembali"))
+                } else {
+                    val errorMsg = parseErrorMessage(response.errorBody()?.string())
+                    Result.failure(Exception(errorMsg))
+                }
+            }
+        } catch (e: Exception) {
+            Result.failure(Exception(e.message ?: "Terjadi kesalahan koneksi internet"))
+        }
+    }
+
+    suspend fun downloadInventoryPdf(
+        type: String?,
+        no: String
+    ): Result<ResponseBody> {
+        return try {
+            val response = apiService.downloadInventoryPdf(type, no)
+            if (response.isSuccessful && response.body() != null) {
+                Result.success(response.body()!!)
+            } else {
+                val rawError = response.errorBody()?.string()
+                Log.e("InventoryPdf", "API Download PDF Error HTTP ${response.code()}: $rawError")
+                val errorMsg = parseErrorMessage(rawError)
+                Result.failure(Exception("HTTP ${response.code()}: $errorMsg"))
+            }
+        } catch (e: Exception) {
+            Log.e("InventoryPdf", "API Download PDF Exception", e)
+            Result.failure(Exception(e.message ?: "Terjadi kesalahan koneksi internet"))
+        }
+    }
+
     suspend fun getProducts(
         nidCategory: Int?,
         search: String?,

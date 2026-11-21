@@ -44,3 +44,42 @@ data class InventoryItemDto(
     @SerializedName("qty_keluar") val qtyKeluar: Int = 0,
     @SerializedName("qty_sisa") val qtySisa: Int = 0
 )
+
+// --- Inventory Detail Models ---
+data class InventoryDetailResponse(
+    @SerializedName("success") val success: Boolean,
+    @SerializedName("data") val data: InventoryDetailData? = null,
+    @SerializedName("message") val message: String? = null
+)
+
+data class InventoryDetailData(
+    @SerializedName("cno_ref") val cnoRef: String = "-",
+    @SerializedName("ctype") val ctype: String = "IN",
+    @SerializedName("dmutation") val dmutation: String = "-",
+    @SerializedName("dmutation_full") val dmutationFull: String = "-",
+    @SerializedName("diterima_dari") val diterimaDari: String = "-",
+    @SerializedName("transfer_ke") val transferKe: String = "-",
+    @SerializedName("outlet_name") val outletName: String = "Matahati POS",
+    @SerializedName("creason") val creason: String = "-",
+    @SerializedName("cnote") val cnote: String = "-",
+    @SerializedName("cstatus") val cstatus: String = "DRAFT",
+    @SerializedName("status_label") val statusLabel: String = "Draf",
+    @SerializedName("posted_by") val postedBy: String = "-",
+    @SerializedName("total_qty") val totalQty: Int = 0,
+    @SerializedName("total_cost") val totalCost: Double = 0.0,
+    @SerializedName("total_cost_formatted") val totalCostFormatted: String = "Rp 0",
+    @SerializedName("details") val details: List<InventoryDetailItemDto> = emptyList()
+)
+
+data class InventoryDetailItemDto(
+    @SerializedName("no") val no: Int = 1,
+    @SerializedName("tipe") val tipe: String = "Produk",
+    @SerializedName("item_name") val itemName: String = "-",
+    @SerializedName("category_name") val categoryName: String = "PRODUK",
+    @SerializedName("current_stock") val currentStock: Int = 0,
+    @SerializedName("qty") val qty: Int = 0,
+    @SerializedName("cost") val cost: Double = 0.0,
+    @SerializedName("cost_formatted") val costFormatted: String = "Rp 0",
+    @SerializedName("subtotal") val subtotal: Double = 0.0,
+    @SerializedName("subtotal_formatted") val subtotalFormatted: String = "Rp 0"
+)

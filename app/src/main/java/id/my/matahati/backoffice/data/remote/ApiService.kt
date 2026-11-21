@@ -4,6 +4,7 @@ import id.my.matahati.backoffice.model.CategoryListResponse
 import id.my.matahati.backoffice.model.CreateCategoryRequest
 import id.my.matahati.backoffice.model.DashboardResponse
 import id.my.matahati.backoffice.model.ErrorResponse
+import id.my.matahati.backoffice.model.InventoryDetailResponse
 import id.my.matahati.backoffice.model.InventoryResponse
 import id.my.matahati.backoffice.model.LoginRequest
 import id.my.matahati.backoffice.model.LoginResponse
@@ -83,6 +84,19 @@ interface ApiService {
         @Query("page") page: Int? = 1,
         @Query("per_page") perPage: Int? = 50
     ): Response<InventoryResponse>
+
+    @GET("api/office/inventory/detail")
+    suspend fun getInventoryDetail(
+        @Query("type") type: String? = "stock_in",
+        @Query("no") no: String
+    ): Response<InventoryDetailResponse>
+
+    @GET("api/office/inventory/print-pdf")
+    @Streaming
+    suspend fun downloadInventoryPdf(
+        @Query("type") type: String? = "stock_in",
+        @Query("no") no: String
+    ): Response<ResponseBody>
 
     @GET("api/office/products")
     suspend fun getProducts(

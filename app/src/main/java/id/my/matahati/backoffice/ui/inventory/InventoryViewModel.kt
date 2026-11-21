@@ -1,8 +1,16 @@
 package id.my.matahati.backoffice.ui.inventory
 
+import android.content.ContentValues
+import android.content.Context
+import android.os.Build
+import android.os.Environment
+import android.provider.MediaStore
+import android.util.Log
+import android.widget.Toast
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import id.my.matahati.backoffice.model.InventoryDetailData
 import id.my.matahati.backoffice.model.InventoryItemDto
 import id.my.matahati.backoffice.repository.AuthRepository
 import id.my.matahati.backoffice.repository.UnauthorizedException
@@ -12,6 +20,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import okhttp3.ResponseBody
+import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
@@ -37,7 +47,15 @@ data class InventoryUiState(
     val totalResults: Int = 0,
     val isLoading: Boolean = false,
     val errorMessage: String? = null,
-    val isUnauthorized: Boolean = false
+    val isUnauthorized: Boolean = false,
+
+    // Detail State
+    val isDetailOpen: Boolean = false,
+    val selectedDetailNo: String? = null,
+    val selectedDetailType: String = "stock_in",
+    val selectedInventoryDetail: InventoryDetailData? = null,
+    val isDetailLoading: Boolean = false,
+    val detailErrorMessage: String? = null
 )
 
 class InventoryViewModel(private val repository: AuthRepository) : ViewModel() {
@@ -63,7 +81,7 @@ class InventoryViewModel(private val repository: AuthRepository) : ViewModel() {
 
     fun selectTab(tab: InventoryTab) {
         if (_uiState.value.selectedTab == tab) return
-        _uiState.update { it.copy(selectedTab = tab, currentPage = 1) }
+        _uiState.update { it.copy(selectedTab = tab, currentPage = 1, isDetailOpen = false) }
         fetchInventory(page = 1)
     }
 
@@ -79,7 +97,8 @@ class InventoryViewModel(private val repository: AuthRepository) : ViewModel() {
                 selectedPreset = preset,
                 startDate = start,
                 endDate = end,
-                currentPage = 1
+                currentPage = 1,
+                isDetailOpen = false
             )
         }
         fetchInventory(page = 1)
@@ -93,12 +112,133 @@ class InventoryViewModel(private val repository: AuthRepository) : ViewModel() {
     }
 
     fun updateOutlet(outletId: Int) {
-        _uiState.update { it.copy(selectedOutletId = outletId, currentPage = 1) }
+        _uiState.update { it.copy(selectedOutletId = outletId, currentPage = 1, isDetailOpen = false) }
         fetchInventory(page = 1)
     }
 
     fun refresh() {
         fetchInventory(page = _uiState.value.currentPage)
+    }
+
+    fun openDetail(type: String, no: String) {
+        _uiState.update {
+            it.copy(
+                isDetailOpen = true,
+                selectedDetailType = type,
+                selectedDetailNo = no,
+                isDetailLoading = true,
+                detailErrorMessage = null,
+                selectedInventoryDetail = null
+            )
+        }
+
+        viewModelScope.launch {
+            val result = repository.getInventoryDetail(type, no)
+            result.onSuccess { response ->
+                _uiState.update {
+                    it.copy(
+                        isDetailLoading = false,
+                        selectedInventoryDetail = response.data,
+                        detailErrorMessage = null
+                    )
+                }
+            }.onFailure { exception ->
+                if (exception is UnauthorizedException) {
+                    _uiState.update {
+                        it.copy(
+                            isDetailLoading = false,
+                            isUnauthorized = true
+                        )
+                    }
+                } else {
+                    _uiState.update {
+                        it.copy(
+                            isDetailLoading = false,
+                            detailErrorMessage = exception.message ?: "Gagal memuat detail transaksi"
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    fun closeDetail() {
+        _uiState.update {
+            it.copy(
+                isDetailOpen = false,
+                selectedDetailNo = null,
+                selectedInventoryDetail = null
+            )
+        }
+    }
+
+    fun exportPdf(context: Context) {
+        val state = _uiState.value
+        val no = state.selectedDetailNo ?: return
+        val type = state.selectedDetailType
+
+        val prefix = if (type == "stock_out" || type == "stok_keluar") "Stok_Keluar" else "Stok_Masuk"
+        val fileName = "${prefix}_#${no}.pdf"
+
+        Toast.makeText(context, "Mengunduh PDF $fileName...", Toast.LENGTH_SHORT).show()
+
+        viewModelScope.launch {
+            val result = repository.downloadInventoryPdf(type, no)
+            result.onSuccess { responseBody ->
+                val saved = savePdfResponseBodyToDownloads(context, responseBody, fileName)
+                if (saved) {
+                    Log.d("InventoryPdf", "File $fileName berhasil diunduh dan disimpan ke Downloads")
+                    Toast.makeText(context, "File $fileName berhasil disimpan di folder Downloads!", Toast.LENGTH_LONG).show()
+                } else {
+                    Log.e("InventoryPdf", "Gagal menyimpan file $fileName ke folder Downloads")
+                    Toast.makeText(context, "Gagal menyimpan $fileName ke folder Downloads.", Toast.LENGTH_LONG).show()
+                }
+            }.onFailure { exception ->
+                Log.e("InventoryPdf", "Gagal mengunduh file PDF: ${exception.message}", exception)
+                Toast.makeText(context, "Gagal mengunduh PDF: ${exception.message}", Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
+    private fun savePdfResponseBodyToDownloads(context: Context, body: ResponseBody, fileName: String): Boolean {
+        return try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                val values = ContentValues().apply {
+                    put(MediaStore.Downloads.DISPLAY_NAME, fileName)
+                    put(MediaStore.Downloads.MIME_TYPE, "application/pdf")
+                    put(MediaStore.Downloads.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
+                }
+
+                val resolver = context.contentResolver
+                val uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
+                if (uri == null) {
+                    Log.e("InventoryPdf", "MediaStore resolver.insert mengembalikan null URI")
+                    return false
+                }
+
+                resolver.openOutputStream(uri)?.use { outputStream ->
+                    body.byteStream().use { inputStream ->
+                        inputStream.copyTo(outputStream)
+                    }
+                }
+                true
+            } else {
+                @Suppress("DEPRECATION")
+                val targetFile = File(
+                    Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
+                    fileName
+                )
+                targetFile.outputStream().use { outputStream ->
+                    body.byteStream().use { inputStream ->
+                        inputStream.copyTo(outputStream)
+                    }
+                }
+                true
+            }
+        } catch (e: Exception) {
+            Log.e("InventoryPdf", "Exception saat menyimpan file $fileName", e)
+            false
+        }
     }
 
     private fun fetchInventory(page: Int = _uiState.value.currentPage) {
