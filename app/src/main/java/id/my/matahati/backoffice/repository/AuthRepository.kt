@@ -3,10 +3,13 @@ package id.my.matahati.backoffice.repository
 import com.google.gson.Gson
 import id.my.matahati.backoffice.data.local.SessionManager
 import id.my.matahati.backoffice.data.remote.ApiService
+import id.my.matahati.backoffice.model.CategoryListResponse
+import id.my.matahati.backoffice.model.CreateCategoryRequest
 import id.my.matahati.backoffice.model.DashboardResponse
 import id.my.matahati.backoffice.model.ErrorResponse
 import id.my.matahati.backoffice.model.LoginRequest
 import id.my.matahati.backoffice.model.LoginResponse
+import id.my.matahati.backoffice.model.ProductListResponse
 import id.my.matahati.backoffice.model.PurchaseDetailResponse
 import id.my.matahati.backoffice.model.PurchaseListResponse
 import id.my.matahati.backoffice.model.ReportResponse
@@ -43,6 +46,8 @@ class AuthRepository(
             Result.failure(Exception(e.message ?: "Terjadi kesalahan koneksi internet"))
         }
     }
+
+    fun getToken(): String? = sessionManager.getToken()
 
     suspend fun checkSession(): Boolean {
         if (!sessionManager.isLoggedIn()) return false
@@ -228,6 +233,96 @@ class AuthRepository(
                     Result.success(res)
                 } else {
                     Result.failure(Exception(if (!res.message.isNullOrBlank()) res.message else "Gagal memuat data inventori"))
+                }
+            } else {
+                if (response.code() == 401 || response.code() == 403) {
+                    sessionManager.clearSession()
+                    Result.failure(UnauthorizedException("Sesi Anda telah berakhir, silakan login kembali"))
+                } else {
+                    val errorMsg = parseErrorMessage(response.errorBody()?.string())
+                    Result.failure(Exception(errorMsg))
+                }
+            }
+        } catch (e: Exception) {
+            Result.failure(Exception(e.message ?: "Terjadi kesalahan koneksi internet"))
+        }
+    }
+
+    suspend fun getProducts(
+        nidCategory: Int?,
+        search: String?,
+        hideEmpty: Boolean,
+        nidOutlet: Int?,
+        page: Int? = 1,
+        perPage: Int? = 50
+    ): Result<ProductListResponse> {
+        return try {
+            val outletParam = if (nidOutlet != null && nidOutlet > 0) nidOutlet else null
+            val categoryParam = if (nidCategory != null && nidCategory > 0) nidCategory else null
+            val searchParam = if (search.isNullOrBlank()) null else search
+            val hideEmptyParam = if (hideEmpty) 1 else 0
+
+            val response = apiService.getProducts(categoryParam, searchParam, hideEmptyParam, outletParam, page, perPage)
+            if (response.isSuccessful && response.body() != null) {
+                val res = response.body()!!
+                if (res.success) {
+                    Result.success(res)
+                } else {
+                    Result.failure(Exception(if (!res.message.isNullOrBlank()) res.message else "Gagal memuat produk"))
+                }
+            } else {
+                if (response.code() == 401 || response.code() == 403) {
+                    sessionManager.clearSession()
+                    Result.failure(UnauthorizedException("Sesi Anda telah berakhir, silakan login kembali"))
+                } else {
+                    val errorMsg = parseErrorMessage(response.errorBody()?.string())
+                    Result.failure(Exception(errorMsg))
+                }
+            }
+        } catch (e: Exception) {
+            Result.failure(Exception(e.message ?: "Terjadi kesalahan koneksi internet"))
+        }
+    }
+
+    suspend fun getCategories(
+        search: String?,
+        nidOutlet: Int?
+    ): Result<CategoryListResponse> {
+        return try {
+            val outletParam = if (nidOutlet != null && nidOutlet > 0) nidOutlet else null
+            val searchParam = if (search.isNullOrBlank()) null else search
+
+            val response = apiService.getCategories(searchParam, outletParam)
+            if (response.isSuccessful && response.body() != null) {
+                val res = response.body()!!
+                if (res.success) {
+                    Result.success(res)
+                } else {
+                    Result.failure(Exception(if (!res.message.isNullOrBlank()) res.message else "Gagal memuat kategori"))
+                }
+            } else {
+                if (response.code() == 401 || response.code() == 403) {
+                    sessionManager.clearSession()
+                    Result.failure(UnauthorizedException("Sesi Anda telah berakhir, silakan login kembali"))
+                } else {
+                    val errorMsg = parseErrorMessage(response.errorBody()?.string())
+                    Result.failure(Exception(errorMsg))
+                }
+            }
+        } catch (e: Exception) {
+            Result.failure(Exception(e.message ?: "Terjadi kesalahan koneksi internet"))
+        }
+    }
+
+    suspend fun storeCategory(request: CreateCategoryRequest): Result<ErrorResponse> {
+        return try {
+            val response = apiService.storeCategory(request)
+            if (response.isSuccessful && response.body() != null) {
+                val res = response.body()!!
+                if (res.success) {
+                    Result.success(res)
+                } else {
+                    Result.failure(Exception(if (!res.message.isNullOrBlank()) res.message else "Gagal menyimpan kategori"))
                 }
             } else {
                 if (response.code() == 401 || response.code() == 403) {

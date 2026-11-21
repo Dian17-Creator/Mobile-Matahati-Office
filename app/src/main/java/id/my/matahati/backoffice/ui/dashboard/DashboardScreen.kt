@@ -97,6 +97,8 @@ import id.my.matahati.backoffice.model.Outlet
 import id.my.matahati.backoffice.model.TopGroup
 import id.my.matahati.backoffice.ui.inventory.InventoryScreen
 import id.my.matahati.backoffice.ui.inventory.InventoryViewModel
+import id.my.matahati.backoffice.ui.product.ProductScreen
+import id.my.matahati.backoffice.ui.product.ProductViewModel
 import id.my.matahati.backoffice.ui.purchase.PurchaseScreen
 import id.my.matahati.backoffice.ui.purchase.PurchaseViewModel
 import id.my.matahati.backoffice.ui.report.ReportScreen
@@ -238,6 +240,16 @@ fun DashboardScreen(
                         )
                         InventoryScreen(
                             viewModel = inventoryViewModel,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
+                    DashboardMenu.PRODUK -> {
+                        val productViewModel: ProductViewModel = viewModel(
+                            key = "ProductViewModel_${uiState.selectedOutletId}",
+                            factory = ProductViewModel.Factory(viewModel.repository)
+                        )
+                        ProductScreen(
+                            viewModel = productViewModel,
                             modifier = Modifier.fillMaxSize()
                         )
                     }
@@ -461,7 +473,7 @@ private fun SidebarNavigation(
                 isExpanded = uiState.expandedParentMenus.contains("Produk & Inventori"),
                 onToggleExpand = { onToggleParentMenu("Produk & Inventori") },
                 subItems = listOf(
-//                    DashboardMenu.PRODUK,
+                    DashboardMenu.PRODUK,
                     DashboardMenu.INVENTORI,
 //                    DashboardMenu.PRODUK_KOMBO
                 ),
