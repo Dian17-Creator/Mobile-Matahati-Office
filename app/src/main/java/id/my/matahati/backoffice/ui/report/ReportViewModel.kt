@@ -1,5 +1,10 @@
 package id.my.matahati.backoffice.ui.report
 
+import android.app.DownloadManager
+import android.content.Context
+import android.net.Uri
+import android.os.Environment
+import android.widget.Toast
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -99,6 +104,49 @@ class ReportViewModel(private val repository: AuthRepository) : ViewModel() {
 
     fun refresh() {
         fetchReports(page = _uiState.value.currentPage)
+    }
+
+    fun exportExcel(context: Context) {
+        val state = _uiState.value
+        val type = state.selectedType.apiKey
+        val startDate = state.startDate.ifEmpty { null }
+        val endDate = state.endDate.ifEmpty { null }
+        val nidOutlet = if (state.selectedOutletId > 0) state.selectedOutletId else null
+
+        val token = repository.getToken()
+
+        var url = "https://pos.matahaticafe.com/api/office/reports/export?type=$type"
+        if (!startDate.isNullOrEmpty()) url += "&start_date=$startDate"
+        if (!endDate.isNullOrEmpty()) url += "&end_date=$endDate"
+        if (nidOutlet != null) url += "&nid_outlet=$nidOutlet"
+        if (!token.isNullOrEmpty()) url += "&token=$token"
+
+        val fileName = when (state.selectedType) {
+            ReportType.RINCIAN_PENJUALAN -> "Rincian_Penjualan_${state.startDate}_sd_${state.endDate}.xlsx"
+            ReportType.ITEM_PENJUALAN -> "Item_Penjualan_${state.startDate}_sd_${state.endDate}.xlsx"
+            ReportType.LAPORAN_PELANGGAN -> "Laporan_Pelanggan_${state.startDate}_sd_${state.endDate}.xlsx"
+        }
+
+        try {
+            val request = DownloadManager.Request(Uri.parse(url))
+                .setTitle("Mengunduh $fileName")
+                .setDescription("File Excel Laporan $fileName")
+                .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+                .setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, fileName)
+                .setAllowedOverMetered(true)
+                .setAllowedOverRoaming(true)
+
+            if (!token.isNullOrEmpty()) {
+                request.addRequestHeader("Authorization", "Bearer $token")
+            }
+
+            val manager = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+            manager.enqueue(request)
+
+            Toast.makeText(context, "Mengunduh file Excel ke folder Download...", Toast.LENGTH_LONG).show()
+        } catch (e: Exception) {
+            Toast.makeText(context, "Gagal mengunduh file Excel: ${e.message}", Toast.LENGTH_LONG).show()
+        }
     }
 
     private fun fetchReports(page: Int = _uiState.value.currentPage) {

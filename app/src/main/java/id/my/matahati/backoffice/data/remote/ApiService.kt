@@ -1,11 +1,14 @@
 package id.my.matahati.backoffice.data.remote
 
+import id.my.matahati.backoffice.model.CategoryListResponse
+import id.my.matahati.backoffice.model.CreateCategoryRequest
 import id.my.matahati.backoffice.model.DashboardResponse
 import id.my.matahati.backoffice.model.ErrorResponse
 import id.my.matahati.backoffice.model.InventoryResponse
 import id.my.matahati.backoffice.model.LoginRequest
 import id.my.matahati.backoffice.model.LoginResponse
 import id.my.matahati.backoffice.model.MeResponse
+import id.my.matahati.backoffice.model.ProductListResponse
 import id.my.matahati.backoffice.model.PurchaseDetailResponse
 import id.my.matahati.backoffice.model.PurchaseListResponse
 import id.my.matahati.backoffice.model.ReportResponse
@@ -69,4 +72,25 @@ interface ApiService {
         @Query("page") page: Int? = 1,
         @Query("per_page") perPage: Int? = 50
     ): Response<InventoryResponse>
+
+    @GET("api/office/products")
+    suspend fun getProducts(
+        @Query("nid_category") nidCategory: Int? = null,
+        @Query("search") search: String? = null,
+        @Query("hide_empty") hideEmpty: Int? = 0,
+        @Query("nid_outlet") nidOutlet: Int? = null,
+        @Query("page") page: Int? = 1,
+        @Query("per_page") perPage: Int? = 50
+    ): Response<ProductListResponse>
+
+    @GET("api/office/categories")
+    suspend fun getCategories(
+        @Query("search") search: String? = null,
+        @Query("nid_outlet") nidOutlet: Int? = null
+    ): Response<CategoryListResponse>
+
+    @POST("api/office/categories")
+    suspend fun storeCategory(
+        @Body request: CreateCategoryRequest
+    ): Response<ErrorResponse>
 }
