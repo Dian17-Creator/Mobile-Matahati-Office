@@ -57,6 +57,12 @@ interface ApiService {
         @Path("id") id: Int
     ): Response<PurchaseDetailResponse>
 
+    @GET("api/office/purchases/{id}/print-pdf")
+    @Streaming
+    suspend fun downloadPurchasePdf(
+        @Path("id") id: Int
+    ): Response<ResponseBody>
+
     @GET("api/office/reports")
     suspend fun getReports(
         @Query("type") type: String? = "sales_detail",

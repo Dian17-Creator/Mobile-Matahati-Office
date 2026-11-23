@@ -177,7 +177,12 @@ class InventoryViewModel(private val repository: AuthRepository) : ViewModel() {
         val no = state.selectedDetailNo ?: return
         val type = state.selectedDetailType
 
-        val prefix = if (type == "stock_out" || type == "stok_keluar") "Stok_Keluar" else "Stok_Masuk"
+        val prefix = when (type) {
+            "stock_out", "stok_keluar" -> "Stok_Keluar"
+            "produksi_stok", "production" -> "Produksi_Stok"
+            "stok_opname", "opname" -> "Stok_Opname"
+            else -> "Stok_Masuk"
+        }
         val fileName = "${prefix}_#${no}.pdf"
 
         Toast.makeText(context, "Mengunduh PDF $fileName...", Toast.LENGTH_SHORT).show()

@@ -66,6 +66,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -151,6 +152,8 @@ fun PurchaseScreen(
             }
         }
 
+        val context = LocalContext.current
+
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -160,7 +163,8 @@ fun PurchaseScreen(
                 PurchaseDetailContent(
                     uiState = uiState,
                     onBack = { viewModel.closeDetail() },
-                    onRefresh = { uiState.selectedPurchaseDetail?.id?.let { viewModel.openDetail(it) } }
+                    onRefresh = { uiState.selectedPurchaseDetail?.id?.let { viewModel.openDetail(it) } },
+                    onPrintPdf = { viewModel.exportPdf(context) }
                 )
             } else {
                 PurchaseListContent(
@@ -537,7 +541,8 @@ private fun PurchaseListContent(
 private fun PurchaseDetailContent(
     uiState: PurchaseUiState,
     onBack: () -> Unit,
-    onRefresh: () -> Unit
+    onRefresh: () -> Unit,
+    onPrintPdf: () -> Unit
 ) {
     val detail = uiState.selectedPurchaseDetail
 
@@ -611,7 +616,7 @@ private fun PurchaseDetailContent(
                 }
 
                 OutlinedButton(
-                    onClick = { /* Cetak PO */ },
+                    onClick = onPrintPdf,
                     shape = RoundedCornerShape(8.dp),
                     border = BorderStroke(1.dp, Color(0xFFCBD5E1))
                 ) {
