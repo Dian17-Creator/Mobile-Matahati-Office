@@ -187,6 +187,23 @@ class AuthRepository(
         }
     }
 
+    suspend fun downloadPurchasePdf(id: Int): Result<ResponseBody> {
+        return try {
+            val response = apiService.downloadPurchasePdf(id)
+            if (response.isSuccessful && response.body() != null) {
+                Result.success(response.body()!!)
+            } else {
+                val rawError = response.errorBody()?.string()
+                Log.e("PurchasePdf", "API Download PDF Error HTTP ${response.code()}: $rawError")
+                val errorMsg = parseErrorMessage(rawError)
+                Result.failure(Exception("HTTP ${response.code()}: $errorMsg"))
+            }
+        } catch (e: Exception) {
+            Log.e("PurchasePdf", "API Download PDF Exception", e)
+            Result.failure(Exception(e.message ?: "Terjadi kesalahan koneksi internet"))
+        }
+    }
+
     suspend fun getReports(
         type: String?,
         startDate: String?,

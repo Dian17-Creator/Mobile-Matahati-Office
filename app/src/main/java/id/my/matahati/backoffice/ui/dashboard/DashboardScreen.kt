@@ -474,7 +474,7 @@ private fun SidebarNavigation(
                 isExpanded = uiState.expandedParentMenus.contains("Produk & Inventori"),
                 onToggleExpand = { onToggleParentMenu("Produk & Inventori") },
                 subItems = listOf(
-                    DashboardMenu.PRODUK,
+//                    DashboardMenu.PRODUK,
                     DashboardMenu.INVENTORI,
 //                    DashboardMenu.PRODUK_KOMBO
                 ),

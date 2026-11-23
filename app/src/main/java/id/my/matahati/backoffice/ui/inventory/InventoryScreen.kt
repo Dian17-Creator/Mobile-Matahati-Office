@@ -24,7 +24,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.ErrorOutline
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material.icons.filled.Print
 import androidx.compose.material.icons.filled.Refresh
@@ -33,6 +36,7 @@ import androidx.compose.material.icons.outlined.ContentPaste
 import androidx.compose.material.icons.outlined.Inbox
 import androidx.compose.material.icons.outlined.Inventory2
 import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.outlined.Storefront
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -341,8 +345,14 @@ fun InventoryScreen(
                                         items = uiState.items,
                                         onOpenDetail = { no -> viewModel.openDetail("stock_out", no) }
                                     )
-                                    InventoryTab.PRODUKSI_STOK -> ProductionTable(items = uiState.items)
-                                    InventoryTab.STOK_OPNAME -> StockOpnameTable(items = uiState.items)
+                                    InventoryTab.PRODUKSI_STOK -> ProductionTable(
+                                        items = uiState.items,
+                                        onOpenDetail = { no -> viewModel.openDetail("produksi_stok", no) }
+                                    )
+                                    InventoryTab.STOK_OPNAME -> StockOpnameTable(
+                                        items = uiState.items,
+                                        onOpenDetail = { no -> viewModel.openDetail("stok_opname", no) }
+                                    )
                                     InventoryTab.PERGERAKAN_STOK -> MovementTable(items = uiState.items)
                                 }
 
@@ -379,7 +389,708 @@ private fun InventoryDetailContent(
     onRefresh: () -> Unit
 ) {
     val detail = uiState.selectedInventoryDetail
-    val isStockOut = uiState.selectedDetailType == "stock_out" || uiState.selectedDetailType == "stok_keluar"
+    val type = uiState.selectedDetailType
+
+    if (uiState.isDetailLoading) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(280.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                CircularProgressIndicator(color = MatahatiMaroon)
+                Spacer(modifier = Modifier.height(12.dp))
+                Text("Memuat detail transaksi...", color = Color(0xFF64748B), fontSize = 14.sp)
+            }
+        }
+    } else if (uiState.detailErrorMessage != null) {
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFFFEF2F2))
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(20.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(text = uiState.detailErrorMessage ?: "Gagal memuat detail", color = Color(0xFFDC2626))
+                Button(onClick = onRefresh, colors = ButtonDefaults.buttonColors(containerColor = MatahatiMaroon)) {
+                    Text("Coba Lagi", color = Color.White)
+                }
+            }
+        }
+    } else if (detail != null) {
+        when {
+            type == "produksi_stok" || type == "production" || detail.type == "produksi_stok" -> {
+                ProductionDetailContent(detail, onBack, onExportPdf, onRefresh)
+            }
+            type == "stok_opname" || type == "opname" || detail.type == "stok_opname" -> {
+                OpnameDetailContent(detail, onBack, onExportPdf, onRefresh)
+            }
+            else -> {
+                StandardStockDetailContent(detail, type, onBack, onExportPdf, onRefresh)
+            }
+        }
+    }
+}
+
+@Composable
+private fun ProductionDetailContent(
+    detail: id.my.matahati.backoffice.model.InventoryDetailData,
+    onBack: () -> Unit,
+    onExportPdf: () -> Unit,
+    onRefresh: () -> Unit
+) {
+    var isMaterialsExpanded by remember { mutableStateOf(true) }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+    ) {
+        Text(
+            text = "Inventori  /  Detail Stok Produksi",
+            fontSize = 13.sp,
+            color = Color(0xFF0284C7),
+            fontWeight = FontWeight.Medium
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(10.dp),
+            color = Color(0xFFDCFCE7),
+            border = BorderStroke(1.dp, Color(0xFF86EFAC))
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(14.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Default.CheckCircle,
+                    contentDescription = "Status Posted",
+                    tint = Color(0xFF16A34A),
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(10.dp))
+                Text(
+                    text = "Status Posted: Dokumen produksi ini telah diposting. Stok bahan baku telah dipotong dan stok produk jadi telah ditambahkan ke sistem.",
+                    fontSize = 13.sp,
+                    color = Color(0xFF15803D),
+                    fontWeight = FontWeight.Medium
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+            border = BorderStroke(1.dp, Color(0xFFE2E8F0))
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(20.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(44.dp)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(Color(0xFFFEF3C7)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.Settings,
+                            contentDescription = null,
+                            tint = Color(0xFFD97706),
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Column {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = detail.cnoRef,
+                                fontSize = 20.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF0F172A)
+                            )
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Surface(
+                                shape = RoundedCornerShape(12.dp),
+                                color = Color(0xFFDCFCE7)
+                            ) {
+                                Text(
+                                    text = detail.statusLabel.ifEmpty { "Posted" },
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF15803D),
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Outlined.Storefront,
+                                contentDescription = null,
+                                tint = Color(0xFF64748B),
+                                modifier = Modifier.size(14.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = detail.outletName,
+                                fontSize = 13.sp,
+                                color = Color(0xFF64748B)
+                            )
+                        }
+                    }
+                }
+
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    OutlinedButton(
+                        onClick = onBack,
+                        shape = RoundedCornerShape(8.dp),
+                        border = BorderStroke(1.dp, Color(0xFFCBD5E1))
+                    ) {
+                        Icon(imageVector = Icons.Default.ArrowBack, contentDescription = null, tint = Color(0xFF475569), modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(text = "Kembali", color = Color(0xFF475569), fontWeight = FontWeight.SemiBold)
+                    }
+
+                    OutlinedButton(
+                        onClick = onExportPdf,
+                        shape = RoundedCornerShape(8.dp),
+                        border = BorderStroke(1.dp, Color(0xFFCBD5E1))
+                    ) {
+                        Icon(imageVector = Icons.Default.Print, contentDescription = null, tint = Color(0xFF334155), modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(text = "Cetak", color = Color(0xFF334155), fontWeight = FontWeight.SemiBold)
+                    }
+
+                    OutlinedButton(
+                        onClick = onRefresh,
+                        shape = RoundedCornerShape(8.dp),
+                        border = BorderStroke(1.dp, Color(0xFF16A34A)),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF16A34A))
+                    ) {
+                        Icon(imageVector = Icons.Default.Refresh, contentDescription = null, tint = Color(0xFF16A34A), modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(text = "Sinkronkan Stok", color = Color(0xFF16A34A), fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(IntrinsicSize.Max),
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Card(
+                modifier = Modifier.weight(1f).fillMaxHeight(),
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                border = BorderStroke(1.dp, Color(0xFFE2E8F0))
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(text = "Tanggal", fontSize = 12.sp, color = Color(0xFF64748B))
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(text = detail.dmutationFull.ifEmpty { detail.dmutation }, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0F172A))
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(text = detail.userEmail.ifEmpty { detail.postedBy }, fontSize = 12.sp, color = Color(0xFF64748B))
+                }
+            }
+
+            Card(
+                modifier = Modifier.weight(1f).fillMaxHeight(),
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                border = BorderStroke(1.dp, Color(0xFFE2E8F0))
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(text = "Catatan", fontSize = 12.sp, color = Color(0xFF64748B))
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(text = detail.cnote.ifEmpty { "-" }, fontSize = 14.sp, color = Color(0xFF334155))
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(20.dp))
+
+        Text(text = "Detail Stok Produksi", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0F172A))
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+            border = BorderStroke(1.dp, Color(0xFFE2E8F0))
+        ) {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(Color(0xFFF8FAFC))
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    TableHeaderCell("Nama Produk", Modifier.weight(2.5f))
+                    TableHeaderCell("Qty", Modifier.weight(1f), textAlign = TextAlign.End)
+                    TableHeaderCell("Satuan", Modifier.weight(1f), textAlign = TextAlign.Center)
+                    TableHeaderCell("Bahan", Modifier.weight(1f), textAlign = TextAlign.Center)
+                }
+
+                HorizontalDivider(color = Color(0xFFE2E8F0))
+
+                detail.products.forEach { prod ->
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 14.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(
+                                modifier = Modifier.weight(2.5f),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(36.dp)
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(Color(0xFFF1F5F9)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(imageVector = Icons.Outlined.Inventory2, contentDescription = null, tint = Color(0xFF64748B), modifier = Modifier.size(20.dp))
+                                }
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Text(text = prod.productName, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0F172A))
+                            }
+
+                            Text(text = prod.qtyFormatted, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0F172A), textAlign = TextAlign.End, modifier = Modifier.weight(1f))
+
+                            Text(text = prod.unit, fontSize = 12.sp, color = Color(0xFF64748B), textAlign = TextAlign.Center, modifier = Modifier.weight(1f))
+
+                            Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                                Surface(
+                                    shape = RoundedCornerShape(16.dp),
+                                    color = Color(0xFFEFF6FF),
+                                    border = BorderStroke(1.dp, Color(0xFFBFDBFE)),
+                                    modifier = Modifier.clip(RoundedCornerShape(16.dp)).clickable { isMaterialsExpanded = !isMaterialsExpanded }
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(text = "Bahan (${prod.materialsCount})", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF2563EB))
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Icon(
+                                            imageVector = if (isMaterialsExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                                            contentDescription = null,
+                                            tint = Color(0xFF2563EB),
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        if (isMaterialsExpanded && prod.materials.isNotEmpty()) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .background(Color(0xFFF8FAFC))
+                                    .padding(start = 24.dp, end = 16.dp, top = 12.dp, bottom = 16.dp)
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(text = "↳ Bahan Baku yang Digunakan:", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0284C7))
+                                }
+
+                                Spacer(modifier = Modifier.height(8.dp))
+
+                                Surface(
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = Color.White,
+                                    border = BorderStroke(1.dp, Color(0xFFE2E8F0))
+                                ) {
+                                    Column(modifier = Modifier.fillMaxWidth()) {
+                                        Row(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .background(Color(0xFFF1F5F9))
+                                                .padding(horizontal = 12.dp, vertical = 8.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            TableHeaderCell("NAMA BAHAN BAKU", Modifier.weight(2f))
+                                            TableHeaderCell("TIPE", Modifier.weight(1f), textAlign = TextAlign.Center)
+                                            TableHeaderCell("HARGA SATUAN", Modifier.weight(1.2f), textAlign = TextAlign.End)
+                                            TableHeaderCell("QTY DIPOTONG", Modifier.weight(1.2f), textAlign = TextAlign.End)
+                                            TableHeaderCell("SATUAN", Modifier.weight(1f), textAlign = TextAlign.Center)
+                                            TableHeaderCell("SUBTOTAL BIAYA", Modifier.weight(1.4f), textAlign = TextAlign.End)
+                                        }
+
+                                        HorizontalDivider(color = Color(0xFFE2E8F0))
+
+                                        prod.materials.forEachIndexed { mIdx, mat ->
+                                            Row(
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                Text(text = mat.itemName, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF0F172A), modifier = Modifier.weight(2f))
+
+                                                Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                                                    Surface(shape = RoundedCornerShape(4.dp), color = Color(0xFFF1F5F9)) {
+                                                        Text(text = mat.tipe, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFF475569), modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
+                                                    }
+                                                }
+
+                                                Text(text = mat.costFormatted, fontSize = 12.sp, color = Color(0xFF334155), textAlign = TextAlign.End, modifier = Modifier.weight(1.2f))
+
+                                                Text(text = mat.qtyDeductedFormatted, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color(0xFFDC2626), textAlign = TextAlign.End, modifier = Modifier.weight(1.2f))
+
+                                                Text(text = mat.unit, fontSize = 12.sp, color = Color(0xFF64748B), textAlign = TextAlign.Center, modifier = Modifier.weight(1f))
+
+                                                Text(text = mat.subtotalFormatted, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0F172A), textAlign = TextAlign.End, modifier = Modifier.weight(1.4f))
+                                            }
+
+                                            if (mIdx < prod.materials.size - 1) {
+                                                HorizontalDivider(color = Color(0xFFF1F5F9))
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                HorizontalDivider(color = Color(0xFFE2E8F0))
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 14.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(text = "Jumlah Produk:", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0F172A))
+                    Text(text = detail.totalProductQtyFormatted, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color(0xFF2563EB))
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(32.dp))
+    }
+}
+
+@Composable
+private fun OpnameDetailContent(
+    detail: id.my.matahati.backoffice.model.InventoryDetailData,
+    onBack: () -> Unit,
+    onExportPdf: () -> Unit,
+    onRefresh: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+    ) {
+        Text(
+            text = "Inventory  /  Detail Stok Opname",
+            fontSize = 13.sp,
+            color = Color(0xFF0284C7),
+            fontWeight = FontWeight.Medium
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(10.dp),
+            color = Color(0xFFF8FAFC),
+            border = BorderStroke(1.dp, Color(0xFFE2E8F0))
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(14.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(imageVector = Icons.Default.ErrorOutline, contentDescription = null, tint = Color(0xFF475569), modifier = Modifier.size(18.dp))
+                Spacer(modifier = Modifier.width(10.dp))
+                Text(
+                    text = "Pastikan data sudah benar sebelum diposting. Setelah terposting, data tidak diperbolehkan diubah.",
+                    fontSize = 13.sp,
+                    color = Color(0xFF475569)
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+            border = BorderStroke(1.dp, Color(0xFFE2E8F0))
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(20.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = Color(0xFFDCFCE7)
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(imageVector = Icons.Default.CheckCircle, contentDescription = null, tint = Color(0xFF16A34A), modifier = Modifier.size(14.dp))
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(text = detail.statusLabel.ifEmpty { "Posted" }, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF15803D))
+                            }
+                        }
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column {
+                            Text(text = "No. Stok Opname", fontSize = 11.sp, color = Color(0xFF64748B))
+                            Text(text = detail.cnoRef, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0F172A))
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(imageVector = Icons.Outlined.Storefront, contentDescription = null, tint = Color(0xFF64748B), modifier = Modifier.size(14.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(text = detail.outletName, fontSize = 13.sp, color = Color(0xFF64748B))
+                    }
+                }
+
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    OutlinedButton(
+                        onClick = onBack,
+                        shape = RoundedCornerShape(8.dp),
+                        border = BorderStroke(1.dp, Color(0xFFCBD5E1))
+                    ) {
+                        Icon(imageVector = Icons.Default.ArrowBack, contentDescription = null, tint = Color(0xFF475569), modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(text = "Kembali", color = Color(0xFF475569), fontWeight = FontWeight.SemiBold)
+                    }
+
+                    Button(
+                        onClick = onExportPdf,
+                        shape = RoundedCornerShape(8.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0284C7))
+                    ) {
+                        Icon(imageVector = Icons.Default.Download, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(text = "Download Excel", color = Color.White, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(IntrinsicSize.Max),
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Card(
+                modifier = Modifier.weight(1f).fillMaxHeight(),
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                border = BorderStroke(1.dp, Color(0xFFE2E8F0))
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(text = "Tanggal Stok Opname", fontSize = 12.sp, color = Color(0xFF64748B))
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(text = detail.dmutationFull.ifEmpty { detail.dmutation }, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0F172A))
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(text = detail.userEmail.ifEmpty { detail.postedBy }, fontSize = 12.sp, color = Color(0xFF64748B))
+                }
+            }
+
+            Card(
+                modifier = Modifier.weight(1f).fillMaxHeight(),
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                border = BorderStroke(1.dp, Color(0xFFE2E8F0))
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(text = "Catatan", fontSize = 12.sp, color = Color(0xFF64748B))
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(text = detail.cnote.ifEmpty { "Tidak ada catatan" }, fontSize = 14.sp, color = Color(0xFF334155))
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(20.dp))
+
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+            border = BorderStroke(1.dp, Color(0xFF2563EB))
+        ) {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(Color(0xFF2563EB))
+                        .padding(horizontal = 16.dp, vertical = 14.dp)
+                ) {
+                    Text(
+                        text = "Produk Stok Opname ( ${detail.totalItemsCount.takeIf { it > 0 } ?: detail.details.size} )",
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+                }
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(Color(0xFFF8FAFC))
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    TableHeaderCell("Produk", Modifier.weight(3f))
+                    TableHeaderCell("Qty System", Modifier.weight(1.2f), textAlign = TextAlign.End)
+                    TableHeaderCell("Qty Aktual", Modifier.weight(1.2f), textAlign = TextAlign.End)
+                    TableHeaderCell("Qty Selisih", Modifier.weight(1.2f), textAlign = TextAlign.End)
+                }
+
+                HorizontalDivider(color = Color(0xFFE2E8F0))
+
+                detail.details.forEachIndexed { index, item ->
+                    val prodName = item.productName.ifEmpty { item.itemName }
+                    val itemType = item.itemType.ifEmpty { item.tipe }
+                    val catUnit = item.categoryUnitLine.ifEmpty { "STOK • ${item.unit.ifEmpty { "PCS" }}" }
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            modifier = Modifier.weight(3f),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(36.dp)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(Color(0xFFF1F5F9)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(imageVector = Icons.Outlined.Inventory2, contentDescription = null, tint = Color(0xFF64748B), modifier = Modifier.size(20.dp))
+                            }
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(text = prodName, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0F172A))
+                                    if (itemType.isNotEmpty()) {
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Surface(
+                                            shape = RoundedCornerShape(4.dp),
+                                            color = if (itemType.contains("Bahan", true)) Color(0xFFCCFBF1) else Color(0xFFFEF3C7)
+                                        ) {
+                                            Text(
+                                                text = itemType,
+                                                fontSize = 11.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = if (itemType.contains("Bahan", true)) Color(0xFF0F766E) else Color(0xFFB45309),
+                                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                            )
+                                        }
+                                    }
+                                }
+                                Text(text = catUnit, fontSize = 11.sp, color = Color(0xFF64748B))
+                            }
+                        }
+
+                        Text(text = "${item.qtySystem}", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF0F172A), textAlign = TextAlign.End, modifier = Modifier.weight(1.2f))
+
+                        Text(text = "${item.qtyActual}", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0F172A), textAlign = TextAlign.End, modifier = Modifier.weight(1.2f))
+
+                        Box(modifier = Modifier.weight(1.2f), contentAlignment = Alignment.CenterEnd) {
+                            Surface(
+                                shape = RoundedCornerShape(6.dp),
+                                color = Color(0xFFF1F5F9),
+                                border = BorderStroke(1.dp, Color(0xFFCBD5E1))
+                            ) {
+                                Text(
+                                    text = item.qtyDiffFormatted.ifEmpty { "${item.qtyDiff}" },
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF475569),
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 3.dp)
+                                )
+                            }
+                        }
+                    }
+
+                    if (index < detail.details.size - 1) {
+                        HorizontalDivider(color = Color(0xFFF1F5F9))
+                    }
+                }
+
+                HorizontalDivider(color = Color(0xFFE2E8F0))
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(Color(0xFFF8FAFC))
+                        .padding(horizontal = 16.dp, vertical = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(text = "TOTAL", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0F172A), modifier = Modifier.weight(3f))
+                    Text(text = "${detail.totalSystemQty}", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0F172A), textAlign = TextAlign.End, modifier = Modifier.weight(1.2f))
+                    Text(text = "${detail.totalActualQty}", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0F172A), textAlign = TextAlign.End, modifier = Modifier.weight(1.2f))
+                    Text(text = "${detail.totalDiffQty}", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0F172A), textAlign = TextAlign.End, modifier = Modifier.weight(1.2f))
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(32.dp))
+    }
+}
+
+@Composable
+private fun StandardStockDetailContent(
+    detail: id.my.matahati.backoffice.model.InventoryDetailData,
+    type: String,
+    onBack: () -> Unit,
+    onExportPdf: () -> Unit,
+    onRefresh: () -> Unit
+) {
+    val isStockOut = type == "stock_out" || type == "stok_keluar"
     val docTypeLabel = if (isStockOut) "Detail Stok Keluar" else "Detail Stok Masuk"
 
     Column(
@@ -387,7 +1098,6 @@ private fun InventoryDetailContent(
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
     ) {
-        // Top Breadcrumb & Action Header
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -403,104 +1113,71 @@ private fun InventoryDetailContent(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        if (uiState.isDetailLoading) {
-            Box(
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(10.dp),
+            color = Color(0xFFF8FAFC),
+            border = BorderStroke(1.dp, Color(0xFFE2E8F0))
+        ) {
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(280.dp),
-                contentAlignment = Alignment.Center
+                    .padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    CircularProgressIndicator(color = MatahatiMaroon)
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Text("Memuat detail transaksi...", color = Color(0xFF64748B), fontSize = 14.sp)
-                }
+                Icon(
+                    imageVector = Icons.Default.ErrorOutline,
+                    contentDescription = "Info",
+                    tint = Color(0xFF475569),
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Text(
+                    text = "Status Posted: Dokumen transaksi ini telah Diposting. Stok fisik barang telah ditambahkan secara otomatis ke outlet penerima dan tercatat pada laporan pergerakan stok.",
+                    fontSize = 13.sp,
+                    color = Color(0xFF475569)
+                )
             }
-        } else if (uiState.detailErrorMessage != null) {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFFFEF2F2))
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(20.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(text = uiState.detailErrorMessage ?: "Gagal memuat detail", color = Color(0xFFDC2626))
-                    Button(onClick = onRefresh, colors = ButtonDefaults.buttonColors(containerColor = MatahatiMaroon)) {
-                        Text("Coba Lagi", color = Color.White)
-                    }
-                }
-            }
-        } else if (detail != null) {
-            // Top Status Posted Banner Box
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(10.dp),
-                color = Color(0xFFF8FAFC),
-                border = BorderStroke(1.dp, Color(0xFFE2E8F0))
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.ErrorOutline,
-                        contentDescription = "Info",
-                        tint = Color(0xFF475569),
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Text(
-                        text = "Status Posted: Dokumen transaksi ini telah Diposting. Stok fisik barang telah ditambahkan secara otomatis ke outlet penerima dan tercatat pada laporan pergerakan stok.",
-                        fontSize = 13.sp,
-                        color = Color(0xFF475569)
-                    )
-                }
-            }
+        }
 
-            Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
-            // Main Document Number Box
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White),
-                border = BorderStroke(1.dp, Color(0xFFE2E8F0))
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+            border = BorderStroke(1.dp, Color(0xFFE2E8F0))
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(20.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(20.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Surface(
-                            shape = RoundedCornerShape(16.dp),
-                            color = Color(0xFFDCFCE7)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Surface(
+                        shape = RoundedCornerShape(16.dp),
+                        color = Color(0xFFDCFCE7)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.CheckCircle,
-                                    contentDescription = null,
-                                    tint = Color(0xFF16A34A),
-                                    modifier = Modifier.size(14.dp)
-                                )
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text(
-                                    text = detail.statusLabel,
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color(0xFF15803D)
-                                )
-                            }
+                            Icon(
+                                imageVector = Icons.Default.CheckCircle,
+                                contentDescription = null,
+                                tint = Color(0xFF16A34A),
+                                modifier = Modifier.size(14.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = detail.statusLabel,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF15803D)
+                            )
+                        }
                         }
 
                         Spacer(modifier = Modifier.width(16.dp))
@@ -826,7 +1503,6 @@ private fun InventoryDetailContent(
             Spacer(modifier = Modifier.height(32.dp))
         }
     }
-}
 
 // =============================================================================
 // TABLE HEADERS & TABLES FOR 5 TABS
@@ -992,16 +1668,20 @@ private fun ProductionTableHeader() {
             .padding(horizontal = 12.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        TableHeaderCell("No.", Modifier.weight(2f))
-        TableHeaderCell("Tanggal", Modifier.weight(1.4f))
-        TableHeaderCell("Catatan", Modifier.weight(2.2f))
-        TableHeaderCell("Status", Modifier.weight(1.1f), textAlign = TextAlign.Center)
-        TableHeaderCell("Diterima / Dibuat Oleh", Modifier.weight(1.5f))
+        TableHeaderCell("No.", Modifier.weight(1.8f))
+        TableHeaderCell("Tanggal", Modifier.weight(1.3f))
+        TableHeaderCell("Catatan", Modifier.weight(2f))
+        TableHeaderCell("Status", Modifier.weight(1f), textAlign = TextAlign.Center)
+        TableHeaderCell("Diterima / Dibuat Oleh", Modifier.weight(1.4f))
+        TableHeaderCell("Aksi", Modifier.weight(0.8f), textAlign = TextAlign.Center)
     }
 }
 
 @Composable
-private fun ProductionTable(items: List<InventoryItemDto>) {
+private fun ProductionTable(
+    items: List<InventoryItemDto>,
+    onOpenDetail: (String) -> Unit
+) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -1017,15 +1697,29 @@ private fun ProductionTable(items: List<InventoryItemDto>) {
                     .padding(horizontal = 12.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                TableBodyCell(item.no ?: "-", Modifier.weight(2f), isBold = true, color = Color(0xFF0F172A))
-                TableBodyCell(item.tanggal ?: "-", Modifier.weight(1.4f))
-                TableBodyCell(item.catatan ?: "-", Modifier.weight(2.2f))
+                TableBodyCell(item.no ?: "-", Modifier.weight(1.8f), isBold = true, color = Color(0xFF0F172A))
+                TableBodyCell(item.tanggal ?: "-", Modifier.weight(1.3f))
+                TableBodyCell(item.catatan ?: "-", Modifier.weight(2f))
                 
-                Box(modifier = Modifier.weight(1.1f), contentAlignment = Alignment.Center) {
+                Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
                     StatusPill(statusLabel = item.statusLabel ?: "Draf", statusRaw = item.status ?: "DRAFT")
                 }
 
-                TableBodyCell(item.diterimaDibuatOleh ?: "-", Modifier.weight(1.5f))
+                TableBodyCell(item.diterimaDibuatOleh ?: "-", Modifier.weight(1.4f))
+
+                Box(modifier = Modifier.weight(0.8f), contentAlignment = Alignment.Center) {
+                    OutlinedButton(
+                        onClick = { item.no?.let { onOpenDetail(it) } },
+                        shape = RoundedCornerShape(6.dp),
+                        border = BorderStroke(1.dp, Color(0xFF0284C7)),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF0284C7)),
+                        modifier = Modifier.height(32.dp)
+                    ) {
+                        Icon(imageVector = Icons.Default.OpenInNew, contentDescription = "Buka", modifier = Modifier.size(12.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(text = "Buka", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
             }
 
             if (index < items.size - 1) {
@@ -1045,16 +1739,20 @@ private fun StockOpnameTableHeader() {
             .padding(horizontal = 12.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        TableHeaderCell("No.", Modifier.weight(2f))
-        TableHeaderCell("Tanggal", Modifier.weight(1.4f))
-        TableHeaderCell("Catatan", Modifier.weight(2.2f))
-        TableHeaderCell("Status", Modifier.weight(1.1f), textAlign = TextAlign.Center)
-        TableHeaderCell("Diterima Oleh", Modifier.weight(1.5f))
+        TableHeaderCell("No.", Modifier.weight(1.8f))
+        TableHeaderCell("Tanggal", Modifier.weight(1.3f))
+        TableHeaderCell("Catatan", Modifier.weight(2f))
+        TableHeaderCell("Status", Modifier.weight(1f), textAlign = TextAlign.Center)
+        TableHeaderCell("Diterima Oleh", Modifier.weight(1.4f))
+        TableHeaderCell("Aksi", Modifier.weight(0.8f), textAlign = TextAlign.Center)
     }
 }
 
 @Composable
-private fun StockOpnameTable(items: List<InventoryItemDto>) {
+private fun StockOpnameTable(
+    items: List<InventoryItemDto>,
+    onOpenDetail: (String) -> Unit
+) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -1070,15 +1768,29 @@ private fun StockOpnameTable(items: List<InventoryItemDto>) {
                     .padding(horizontal = 12.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                TableBodyCell(item.no ?: "-", Modifier.weight(2f), isBold = true, color = Color(0xFF0F172A))
-                TableBodyCell(item.tanggal ?: "-", Modifier.weight(1.4f))
-                TableBodyCell(item.catatan ?: "-", Modifier.weight(2.2f))
+                TableBodyCell(item.no ?: "-", Modifier.weight(1.8f), isBold = true, color = Color(0xFF0F172A))
+                TableBodyCell(item.tanggal ?: "-", Modifier.weight(1.3f))
+                TableBodyCell(item.catatan ?: "-", Modifier.weight(2f))
                 
-                Box(modifier = Modifier.weight(1.1f), contentAlignment = Alignment.Center) {
+                Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
                     StatusPill(statusLabel = item.statusLabel ?: "Draf", statusRaw = item.status ?: "DRAFT")
                 }
 
-                TableBodyCell(item.diterimaOleh ?: "-", Modifier.weight(1.5f))
+                TableBodyCell(item.diterimaOleh ?: "-", Modifier.weight(1.4f))
+
+                Box(modifier = Modifier.weight(0.8f), contentAlignment = Alignment.Center) {
+                    OutlinedButton(
+                        onClick = { item.no?.let { onOpenDetail(it) } },
+                        shape = RoundedCornerShape(6.dp),
+                        border = BorderStroke(1.dp, Color(0xFF0284C7)),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF0284C7)),
+                        modifier = Modifier.height(32.dp)
+                    ) {
+                        Icon(imageVector = Icons.Default.OpenInNew, contentDescription = "Buka", modifier = Modifier.size(12.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(text = "Buka", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
             }
 
             if (index < items.size - 1) {

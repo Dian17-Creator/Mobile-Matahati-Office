@@ -53,6 +53,7 @@ data class InventoryDetailResponse(
 )
 
 data class InventoryDetailData(
+    @SerializedName("type") val type: String = "",
     @SerializedName("cno_ref") val cnoRef: String = "-",
     @SerializedName("ctype") val ctype: String = "IN",
     @SerializedName("dmutation") val dmutation: String = "-",
@@ -60,6 +61,7 @@ data class InventoryDetailData(
     @SerializedName("diterima_dari") val diterimaDari: String = "-",
     @SerializedName("transfer_ke") val transferKe: String = "-",
     @SerializedName("outlet_name") val outletName: String = "Matahati POS",
+    @SerializedName("user_email") val userEmail: String = "",
     @SerializedName("creason") val creason: String = "-",
     @SerializedName("cnote") val cnote: String = "-",
     @SerializedName("cstatus") val cstatus: String = "DRAFT",
@@ -68,16 +70,55 @@ data class InventoryDetailData(
     @SerializedName("total_qty") val totalQty: Int = 0,
     @SerializedName("total_cost") val totalCost: Double = 0.0,
     @SerializedName("total_cost_formatted") val totalCostFormatted: String = "Rp 0",
+    @SerializedName("total_product_qty") val totalProductQty: Double = 0.0,
+    @SerializedName("total_product_qty_formatted") val totalProductQtyFormatted: String = "0",
+    @SerializedName("total_items_count") val totalItemsCount: Int = 0,
+    @SerializedName("total_system_qty") val totalSystemQty: Int = 0,
+    @SerializedName("total_actual_qty") val totalActualQty: Int = 0,
+    @SerializedName("total_diff_qty") val totalDiffQty: Int = 0,
+    @SerializedName("products") val products: List<ProductionProductDto> = emptyList(),
+    @SerializedName("materials") val materials: List<ProductionMaterialDto> = emptyList(),
     @SerializedName("details") val details: List<InventoryDetailItemDto> = emptyList()
+)
+
+data class ProductionProductDto(
+    @SerializedName("no") val no: Int = 1,
+    @SerializedName("product_name") val productName: String = "-",
+    @SerializedName("qty") val qty: Double = 0.0,
+    @SerializedName("qty_formatted") val qtyFormatted: String = "0",
+    @SerializedName("unit") val unit: String = "GRAM",
+    @SerializedName("materials_count") val materialsCount: Int = 0,
+    @SerializedName("materials") val materials: List<ProductionMaterialDto> = emptyList()
+)
+
+data class ProductionMaterialDto(
+    @SerializedName("no") val no: Int = 1,
+    @SerializedName("item_name") val itemName: String = "-",
+    @SerializedName("tipe") val tipe: String = "BAHAN BAKU",
+    @SerializedName("cost") val cost: Double = 0.0,
+    @SerializedName("cost_formatted") val costFormatted: String = "Rp 0",
+    @SerializedName("qty_deducted") val qtyDeducted: Double = 0.0,
+    @SerializedName("qty_deducted_formatted") val qtyDeductedFormatted: String = "-0",
+    @SerializedName("unit") val unit: String = "GRAM",
+    @SerializedName("subtotal") val subtotal: Double = 0.0,
+    @SerializedName("subtotal_formatted") val subtotalFormatted: String = "Rp 0"
 )
 
 data class InventoryDetailItemDto(
     @SerializedName("no") val no: Int = 1,
     @SerializedName("tipe") val tipe: String = "Produk",
     @SerializedName("item_name") val itemName: String = "-",
+    @SerializedName("product_name") val productName: String = "",
+    @SerializedName("item_type") val itemType: String = "",
+    @SerializedName("unit") val unit: String = "",
+    @SerializedName("category_unit_line") val categoryUnitLine: String = "",
     @SerializedName("category_name") val categoryName: String = "PRODUK",
     @SerializedName("current_stock") val currentStock: Int = 0,
     @SerializedName("qty") val qty: Int = 0,
+    @SerializedName("qty_system") val qtySystem: Int = 0,
+    @SerializedName("qty_actual") val qtyActual: Int = 0,
+    @SerializedName("qty_diff") val qtyDiff: Int = 0,
+    @SerializedName("qty_diff_formatted") val qtyDiffFormatted: String = "0",
     @SerializedName("cost") val cost: Double = 0.0,
     @SerializedName("cost_formatted") val costFormatted: String = "Rp 0",
     @SerializedName("subtotal") val subtotal: Double = 0.0,

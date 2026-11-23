@@ -1,5 +1,12 @@
 package id.my.matahati.backoffice.ui.purchase
 
+import android.content.ContentValues
+import android.content.Context
+import android.os.Build
+import android.os.Environment
+import android.provider.MediaStore
+import android.util.Log
+import android.widget.Toast
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -16,6 +23,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import okhttp3.ResponseBody
+import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
@@ -196,6 +205,73 @@ class PurchaseViewModel(private val repository: AuthRepository) : ViewModel() {
 
     fun closeDetail() {
         _uiState.update { it.copy(isDetailOpen = false, selectedPurchaseDetail = null) }
+    }
+
+    fun exportPdf(context: Context) {
+        val detail = _uiState.value.selectedPurchaseDetail ?: return
+        val id = detail.id
+        val noPo = detail.cnoPurchase.ifEmpty { "PO_$id" }
+        val fileName = "Purchase_Order_${noPo.replace("/", "_")}.pdf"
+
+        Toast.makeText(context, "Mengunduh PDF $fileName...", Toast.LENGTH_SHORT).show()
+
+        viewModelScope.launch {
+            val result = repository.downloadPurchasePdf(id)
+            result.onSuccess { responseBody ->
+                val saved = savePdfResponseBodyToDownloads(context, responseBody, fileName)
+                if (saved) {
+                    Log.d("PurchasePdf", "File $fileName berhasil diunduh dan disimpan ke Downloads")
+                    Toast.makeText(context, "File $fileName berhasil disimpan di folder Downloads!", Toast.LENGTH_LONG).show()
+                } else {
+                    Log.e("PurchasePdf", "Gagal menyimpan file $fileName ke folder Downloads")
+                    Toast.makeText(context, "Gagal menyimpan $fileName ke folder Downloads.", Toast.LENGTH_LONG).show()
+                }
+            }.onFailure { exception ->
+                Log.e("PurchasePdf", "Gagal mengunduh file PDF: ${exception.message}", exception)
+                Toast.makeText(context, "Gagal mengunduh PDF: ${exception.message}", Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
+    private fun savePdfResponseBodyToDownloads(context: Context, body: ResponseBody, fileName: String): Boolean {
+        return try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                val values = ContentValues().apply {
+                    put(MediaStore.Downloads.DISPLAY_NAME, fileName)
+                    put(MediaStore.Downloads.MIME_TYPE, "application/pdf")
+                    put(MediaStore.Downloads.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
+                }
+
+                val resolver = context.contentResolver
+                val uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
+                if (uri == null) {
+                    Log.e("PurchasePdf", "MediaStore resolver.insert mengembalikan null URI")
+                    return false
+                }
+
+                resolver.openOutputStream(uri)?.use { outputStream ->
+                    body.byteStream().use { inputStream ->
+                        inputStream.copyTo(outputStream)
+                    }
+                }
+                true
+            } else {
+                @Suppress("DEPRECATION")
+                val targetFile = File(
+                    Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
+                    fileName
+                )
+                targetFile.outputStream().use { outputStream ->
+                    body.byteStream().use { inputStream ->
+                        inputStream.copyTo(outputStream)
+                    }
+                }
+                true
+            }
+        } catch (e: Exception) {
+            Log.e("PurchasePdf", "Exception saat menyimpan file $fileName", e)
+            false
+        }
     }
 
     private fun calculatePresetDates(preset: DatePreset): Pair<String, String> {
